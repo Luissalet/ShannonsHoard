@@ -606,26 +606,6 @@ html[data-hoard-app="lumiere"] {
   --hoard-accent-line: rgba(222, 111, 232, 0.38);
 }
 
-html[data-hoard-app="mercator"] {
-  --hoard-deep: #141b1d;
-  --hoard-sunken: #0f1517;
-  --hoard-surface: #1a2325;
-  --hoard-elevated: #242e31;
-  --hoard-hover: #2a3639;
-  --hoard-border: #344144;
-  --hoard-border-hover: #56686c;
-  --hoard-text: #e1eaec;
-  --hoard-text-muted: #b4bcbe;
-  --hoard-text-dim: #9ba4a6;
-  --hoard-accent: #36bbdb;
-  --hoard-accent-strong: #59c7e1;
-  --hoard-accent-dim: #2f8ea5;
-  --hoard-accent-ink: #131a1b;
-  --hoard-accent-rgb: 54, 187, 219;
-  --hoard-accent-soft: rgba(54, 187, 219, 0.14);
-  --hoard-accent-line: rgba(54, 187, 219, 0.38);
-}
-
 html[data-hoard-app="maxwell"] {
   --hoard-deep: #1c1c14;
   --hoard-sunken: #161610;
@@ -644,6 +624,26 @@ html[data-hoard-app="maxwell"] {
   --hoard-accent-rgb: 217, 220, 82;
   --hoard-accent-soft: rgba(217, 220, 82, 0.14);
   --hoard-accent-line: rgba(217, 220, 82, 0.38);
+}
+
+html[data-hoard-app="mercator"] {
+  --hoard-deep: #141b1d;
+  --hoard-sunken: #0f1517;
+  --hoard-surface: #1a2325;
+  --hoard-elevated: #242e31;
+  --hoard-hover: #2a3639;
+  --hoard-border: #344144;
+  --hoard-border-hover: #56686c;
+  --hoard-text: #e1eaec;
+  --hoard-text-muted: #b4bcbe;
+  --hoard-text-dim: #9ba4a6;
+  --hoard-accent: #36bbdb;
+  --hoard-accent-strong: #59c7e1;
+  --hoard-accent-dim: #2f8ea5;
+  --hoard-accent-ink: #131a1b;
+  --hoard-accent-rgb: 54, 187, 219;
+  --hoard-accent-soft: rgba(54, 187, 219, 0.14);
+  --hoard-accent-line: rgba(54, 187, 219, 0.38);
 }
 
 html[data-hoard-app="midas"] {
@@ -827,13 +827,13 @@ html[data-hoard-app="scheherazade"] {
 }
 
 html[data-hoard-app="shannon"] {
-  --hoard-deep: #141c1c;
+  --hoard-deep: #141b1c;
   --hoard-sunken: #101616;
-  --hoard-surface: #1b2425;
-  --hoard-elevated: #242f30;
-  --hoard-hover: #2b3739;
-  --hoard-border: #354243;
-  --hoard-border-hover: #57696b;
+  --hoard-surface: #1b2324;
+  --hoard-elevated: #252e2f;
+  --hoard-hover: #2b3738;
+  --hoard-border: #354143;
+  --hoard-border-hover: #58686a;
   --hoard-text: #e1ebec;
   --hoard-text-muted: #b4bdbe;
   --hoard-text-dim: #9ba5a6;
