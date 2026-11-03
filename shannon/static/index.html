@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shannon's Hoard</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="/static/app-icon.png">
 <link rel="stylesheet" href="/static/hoard-theme.css">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; }
   header { display: flex; align-items: baseline; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--hoard-border); background: var(--hoard-surface); flex-wrap: wrap; }
-  header h1 { margin: 0; font-size: 22px; }
+  header h1 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; }
   header p { margin: 0; color: var(--hoard-text-muted); font-size: 14px; }
   main { display: grid; grid-template-columns: minmax(320px, 440px) 1fr; gap: 18px; padding: 18px 24px; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
@@ -49,7 +49,7 @@
 </head>
 <body>
 <header>
-  <h1 class="hoard-brand">Shannon's Hoard</h1>
+  <h1 class="hoard-brand"><img src="/static/app-icon.png" alt="" width="28" height="28">Shannon's Hoard</h1>
   <p>Small electronics: wiring, limits and firmware checked together, sensor accuracy with tolerances, test bands and enclosure</p>
 </header>
 <main>
