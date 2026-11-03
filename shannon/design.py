@@ -134,6 +134,16 @@ def validate(design: dict) -> dict:
             questions.append("Over which range must the sensor work (min, max)?")
         sensor.setdefault("step", 1.0)
         sensor.setdefault("accuracy", None)
+        step = float(sensor["step"])
+        if rng and len(rng) == 2 and rng[0] < rng[1]:
+            if step <= 0 or (rng[1] - rng[0]) / step > 2000:
+                raise DesignError("sensor.step must be > 0 and give at most 2000 points over the range")
+        pin = sensor.get("pin") or ""
+        if "." in pin:
+            pref, ppin = pin.split(".", 1)
+            pc = refs.get(pref)
+            if not pc or pc["kind"] != "mcu" or ppin not in MCUS[pc["part"]]["pins"]:
+                raise DesignError(f"sensor.pin {pin} must be a pin of a microcontroller board in the design")
     if questions:
         raise DesignError("the design is incomplete", questions)
     d["name"] = str(d.get("name") or "unnamed design")

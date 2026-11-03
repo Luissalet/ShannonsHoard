@@ -48,8 +48,8 @@ _KIND_BY_PART = [
     (re.compile(r"^Conn_|Screw_Terminal|USB", re.I), "connector"),
     (re.compile(r"AMS1117|MCP1700|LM78|LDO|Regulator", re.I), "regulator"),
 ]
-_BOARD_BY_TEXT = [(re.compile(r"ESP32", re.I), "esp32_devkit_v1"), (re.compile(r"Uno|ATmega328", re.I), "arduino_uno"),
-                  (re.compile(r"Pico|RP2040", re.I), "rpi_pico")]
+_BOARD_BY_TEXT = [(re.compile(r"ESP32", re.I), "esp32_devkit_v1"), (re.compile(r"(?<![a-z])Uno(?![a-z])|ATmega328", re.I), "arduino_uno"),
+                  (re.compile(r"(?<![a-z])Pico(?![a-z])|RP2040", re.I), "rpi_pico")]
 _REG_BY_TEXT = [(re.compile(r"AMS1117-3\.?3", re.I), "ams1117_3v3"), (re.compile(r"MCP1700.*3\.?3|MCP1700-33", re.I), "mcp1700_3v3"),
                 (re.compile(r"7805", re.I), "lm7805")]
 
@@ -65,8 +65,10 @@ def _mcu_pin(board, pinfunction, pinnum):
             return "3V3"
     if pf in ("GND", "VSS"):
         return "GND"
-    if pf in ("VIN", "5V", "+5V", "VBUS"):
-        return "VIN" if "VIN" in pins else ("5V" if "5V" in pins else "VSYS")
+    if pf in ("5V", "+5V"):
+        return "5V" if "5V" in pins else ("VIN" if "VIN" in pins else "VSYS")
+    if pf in ("VIN", "VBUS", "VSYS", "RAW"):
+        return "VIN" if "VIN" in pins else "VSYS"
     return None
 
 
@@ -88,12 +90,14 @@ def to_design(text: str, name: str = "KiCad netlist", supplies: list[dict] | Non
         footprint = _val(comp, "footprint", "")
         text_all = " ".join([value, part, footprint])
         kind = next((k for rx, k in _KIND_BY_PART if rx.search(part)), None)
-        board = next((b for rx, b in _BOARD_BY_TEXT if rx.search(text_all)), None)
+        # Board detection only for symbols that are not already a known kind:
+        # a "PicoBlade" connector footprint is not a Raspberry Pi Pico.
+        board = None if kind else next((b for rx, b in _BOARD_BY_TEXT if rx.search(value + " " + part)), None)
         if board:
             kind = "mcu"
         c = {"ref": ref, "kind": kind or "generic", "source": {"value": value, "part": part, "footprint": footprint}}
         if kind in ("resistor", "capacitor"):
-            first, *rest = value.split()
+            first, *rest = value.split() or [""]
             tol = next((float(t[:-1]) / 100 for t in rest if re.fullmatch(r"\d+(?:\.\d+)?%", t)), None)
             if tol is not None:
                 c["tolerance"] = tol

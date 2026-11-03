@@ -56,12 +56,15 @@ def _pico():
 MCUS = {
     "esp32_devkit_v1": {"label": "ESP32 DevKit v1 (ESP32-WROOM-32)", "logic_v": 3.3, "max_pin_v": 3.6,
                         "adc_bits": 12, "adc_ref": 3.3, "current_ma": 80.0, "pins": _esp32(),
+                        "power_in": ["VIN"], "power_out": {"3V3": 500.0},
                         "notes": "ADC modelled as ideal and linear over 0-3.3 V (11 dB attenuation); the real ESP32 ADC is non-linear near the ends and needs calibration."},
     "arduino_uno": {"label": "Arduino Uno (ATmega328P)", "logic_v": 5.0, "max_pin_v": 5.5, "adc_bits": 10,
                     "adc_ref": 5.0, "current_ma": 50.0, "pins": _uno(),
+                    "power_in": ["VIN"], "power_out": {"5V": 500.0, "3V3": 50.0}, "adc_ref_rail": "5V",
                     "notes": "ADC referenced to the 5 V rail (DEFAULT reference)."},
     "rpi_pico": {"label": "Raspberry Pi Pico (RP2040)", "logic_v": 3.3, "max_pin_v": 3.6, "adc_bits": 12,
                  "adc_ref": 3.3, "current_ma": 30.0, "pins": _pico(),
+                 "power_in": ["VSYS"], "power_out": {"3V3": 300.0},
                  "notes": "ADC referenced to ADC_VREF (3.3 V nominal)."},
 }
 

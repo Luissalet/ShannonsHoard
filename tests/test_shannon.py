@@ -206,3 +206,122 @@ def test_mcp_lists_tools_without_writing(tmp_path):
     assert {"shannon_check", "shannon_sensor_study", "shannon_firmware_header", "shannon_evaluate_measurements",
             "shannon_enclosure", "shannon_import_kicad", "shannon_records", "shannon_examples", "shannon_parts"} <= names
     assert service.records() == []
+
+
+# ---- regressions from the independent review
+
+def test_parallel_supplies_are_a_conflict_not_a_crash():
+    d = examples.get()
+    d["components"].append({"ref": "PS2", "kind": "source", "voltage": 5.0})
+    d["nets"]["+5V"].append("PS2.+")
+    d["nets"]["GND"].append("PS2.-")
+    r = service.check(d, save=False)
+    assert r["status"] == "checked" and "rail-conflict" in codes(r["issues"])
+
+
+def test_led_on_a_rail_with_low_side_resistor():
+    d = examples.get()
+    d["nets"]["LED_DRIVE"] = ["U1.GPIO2"]
+    d["nets"]["+5V"].append("D1.A")
+    d["nets"]["GND"].remove("D1.K")
+    d["nets"]["GND"].append("R2.1")
+    d["nets"]["LED_A"] = ["R2.2", "D1.K"]
+    d.pop("firmware")
+    r = service.check(d, save=False)
+    led = r["leds"][0]
+    assert led["resistor"] == "R2" and led["current_ma"] == pytest.approx((5.0 - 2.0) / 330 * 1000)
+    assert "pin-cannot-drive" not in codes(r["issues"])
+
+
+def test_divider_flipped_does_not_confuse_the_led():
+    d = examples.get()
+    d["nets"]["+3V3"] = ["U2.OUT", "U1.3V3", "RT1.2"]
+    d["nets"]["GND"] = [m for m in d["nets"]["GND"] if m != "RT1.2"] + ["R1.1"]
+    d["nets"]["SENSE"] = ["R1.2", "RT1.1", "C1.1", "U1.GPIO34", "J2.1"]
+    r = service.check(d, save=False)
+    assert r["leds"][0]["resistor"] == "R2" and r["leds"][0]["drive"] == "U1.GPIO2"
+    assert "pin-cannot-drive" not in codes(r["issues"])
+
+
+def test_board_powered_on_vin_drives_its_own_3v3():
+    d = examples.get()
+    d["components"] = [c for c in d["components"] if c["ref"] != "U2"]
+    d["nets"]["+5V"] = ["PS1.+", "J1.1", "U1.VIN"]
+    d["nets"]["GND"] = [m for m in d["nets"]["GND"] if m != "U2.GND"]
+    d["nets"]["+3V3"] = ["U1.3V3", "R1.1"]
+    r = service.check(d, save=False)
+    assert "supply-mismatch" not in codes(r["issues"]) and r["errors"] == 0
+    assert r["operating_point"]["volts"]["SENSE"] == pytest.approx(1.65, rel=1e-6)
+    assert any(p.get("regulator") == "U1.3V3" for p in r["power"])
+
+
+def test_uno_analogread_number_means_analog_pin():
+    p = firmware.parse("void loop(){ analogRead(0); digitalWrite(13, 1); }", "arduino_uno")
+    assert [u["pin"] for u in p["uses"]] == ["A0", "D13"]
+
+
+def test_uno_ratiometric_reference_cancels_supply_tolerance():
+    d = {"name": "uno node", "components": [
+        {"ref": "PS1", "kind": "source", "voltage": 5.0, "tolerance": 0.05},
+        {"ref": "U1", "kind": "mcu", "part": "arduino_uno"},
+        {"ref": "R1", "kind": "resistor", "value": "10k", "tolerance": 0.0},
+        {"ref": "RT1", "kind": "ntc", "r25": "10k", "beta": 3950, "tolerance": 0.0, "beta_tolerance": 0.0}],
+        "nets": {"+5V": ["PS1.+", "U1.5V", "R1.1"], "GND": ["PS1.-", "U1.GND", "RT1.2"], "SENSE": ["R1.2", "RT1.1", "U1.A0"]},
+        "sensor": {"element": "RT1", "range": [0, 80], "step": 1.0, "pin": "U1.A0"}}
+    ch = analysis.sensor_chain(validate(d), 300)
+    # Only quantisation remains when the divider and the ADC share the rail.
+    assert max(r["error_worst_case"] for r in ch["rows"]) <= max(r["resolution"] for r in ch["rows"])
+
+
+def test_kicad_picoblade_connector_and_uno_pins():
+    net = """(export (components
+      (comp (ref "J1") (value "Conn_01x02") (footprint "Connector_Molex:Molex_PicoBlade_53047-0210") (libsource (lib "Connector_Generic") (part "Conn_01x02")))
+      (comp (ref "U1") (value "Arduino_UNO_R3") (libsource (lib "MCU_Module") (part "Arduino_UNO_R3")))
+      (comp (ref "R1") (value "") (libsource (lib "Device") (part "R"))))
+      (nets (net (code "1") (name "+5V") (node (ref "J1") (pin "1")) (node (ref "U1") (pin "5") (pinfunction "+5V")))
+            (net (code "2") (name "GND") (node (ref "J1") (pin "2")) (node (ref "U1") (pin "29") (pinfunction "GND")))
+            (net (code "3") (name "RAW") (node (ref "U1") (pin "28") (pinfunction "VIN")) (node (ref "R1") (pin "1")))))"""
+    out = kicad.to_design(net)
+    kinds = {c["ref"]: (c["kind"], c.get("part")) for c in out["design"]["components"]}
+    assert kinds["J1"] == ("connector", None) and kinds["U1"] == ("mcu", "arduino_uno")
+    assert out["design"]["nets"]["+5V"] == ["J1.1", "U1.5V"] and out["design"]["nets"]["RAW"] == ["U1.VIN", "R1.1"]
+    assert any("R1" in q for q in out["questions"])
+
+
+def test_sensor_step_and_pin_validation():
+    for bad in ({"step": 0}, {"step": -1}, {"step": 1e-6}, {"pin": "R1.2"}):
+        d = examples.get()
+        d["sensor"].update(bad)
+        with pytest.raises(DesignError):
+            validate(d)
+
+
+def test_header_with_leading_digit_name_compiles_and_flags_rails(tmp_path):
+    d = examples.get()
+    d["name"] = "2nd floor node"
+    ch = analysis.sensor_chain(validate(d), 200)
+    gcc = shutil.which("gcc") or shutil.which("cc")
+    if not gcc:
+        pytest.skip("no C compiler")
+    (tmp_path / "t.h").write_text(ch["firmware_table"]["header"])
+    (tmp_path / "t.c").write_text('#include <stdio.h>\n#include "t.h"\nint main(void){printf("%d %d %.1f",'
+                                  'isnan(s_2ND_FLOOR_NODE_TEMPERATURE_from_code(0)) ? 1 : 0, isnan(s_2nd_floor_node_temperature_from_code(4095)) ? 1 : 0,'
+                                  's_2nd_floor_node_temperature_from_code(2047));return 0;}\n'.replace("s_2ND_FLOOR_NODE_TEMPERATURE_from_code", "s_2nd_floor_node_temperature_from_code"))
+    subprocess.run([gcc, "-std=c99", "-Wall", "-Werror", "t.c", "-o", "t", "-lm"], cwd=tmp_path, check=True)
+    out = subprocess.run([str(tmp_path / "t")], capture_output=True, text=True, check=True).stdout.split()
+    assert out[0] == "1" and out[1] == "1" and abs(float(out[2]) - 25) < 0.5
+
+
+def test_test_points_outside_range_and_readings_without_value():
+    d = validate(examples.get())
+    ch = analysis.sensor_chain(d, 200)
+    with pytest.raises(DesignError):
+        analysis.test_plan(d, ch, [{"value": 150}])
+    plan = analysis.test_plan(d, ch)
+    with pytest.raises(DesignError):
+        analysis.evaluate_measurements(plan, [{"codes": [100]}], 12)
+
+
+def test_firmware_line_numbers_survive_block_comments():
+    src = "/* a\nb\nc */\nvoid setup(){\n}\nvoid loop(){ analogRead(34); }\n"
+    assert firmware.parse(src, "esp32_devkit_v1")["uses"][0]["line"] == 6
