@@ -1,12 +1,12 @@
 # Shannon's Hoard — capacidades para Faustus
 
-Lecturas MCP declaradas: shannon_examples, shannon_parts, shannon_firmware_header y shannon_enclosure. Devuelven datos o artefactos enmemoria, sin guardar ficheros/registros, y están disponibles en modoPlan. Check, estudio y evaluación de medidas conservan su persistencia. Sin cambios de permisos en Faustus. Conjunto40pruebas positivas y2omitidas por compiladorC ausente.
+Lecturas MCP declaradas: shannon_examples, shannon_parts, shannon_firmware_header y shannon_enclosure. Devuelven datos o artefactos enmemoria, sin guardar ficheros/registros, y están disponibles en modoPlan. Check, estudio y evaluación de medidas conservan su persistencia. Sin cambios de permisos en Faustus. Conjunto40pruebas positivas y2omitidas por detección específica deGCC/cc.
 
 Integración de familia1988: panel canónico mediante `/api/copilot`, borrador actual y última operación con su entrada exacta. Usa la conversación y los modelos globales de Faustus. Descubrir MCP no arranca HTTP; el Hub dispone de arranque explícito con puerto adaptable. Sin contrato HTTP agent; las9 herramientas propias se exponen por MCPstdio.
 
 Estado: v0.1.0, integrado en main y visible en el Hub (arranque explícito). Arranque explícito `python -m shannon` (puerto 5245). MCP stdio `python -m shannon.mcp_server`.
 
-Correcciones1983 preparadas sobre0777ef9, pendientes de revisión e integración junto aecosystem1936. Espacio propio shannon y proyectoFaustus74d2bc0f38db.38pruebas pasan,2omitidas por falta de compiladorC;8regresiones de revisión incluyen MCPstdio real. Interfaz probada enBrave con circuitos inventados.
+Correcciones1983 y familia1988 integradas conecosystem1936, sin revisión aprobada nueva; conservar los votos históricos. Espacio propio shannon y proyectoFaustus74d2bc0f38db.38pruebas pasan,2omitidas por detección específica deGCC/cc;8regresiones de revisión incluyen MCPstdio real. Interfaz probada enBrave con circuitos inventados.
 
 ## Puede
 - Comprobar conectividad, límites eléctricos (análisis nodal en continua en todo el rango del sensor), reguladores, corrientes y presupuesto de potencia.
@@ -25,3 +25,7 @@ La falta de masa de una placa impide afirmar que el diseño está limpio; no se 
 
 ## Herramientas MCP
 shannon_examples, shannon_parts, shannon_check, shannon_sensor_study, shannon_firmware_header, shannon_evaluate_measurements, shannon_enclosure, shannon_import_kicad, shannon_records.
+
+Contraste C adicional: los dos headers generados compilan y se ejecutan conMSVC enC11, /W4 /WX; valores de calibración y sensores abiertos/cortocircuitados pasan. Las dos omisiones depytestGCC se conservan como tales.
+
+Conector nativo permanentec157889e-09ea-46cd-b296-6182e2a5effd, servidorMCP0605ea67, 9herramientas conectado desdeMain. La aplicación HTTP conserva su parada manual; stdio funciona sin arrancarla. Datos QA aislados y ninguna inferencia solicitada para comprobar estos helpers.
