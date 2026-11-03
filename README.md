@@ -1,5 +1,15 @@
 # Shannon's Hoard
 
+Status: candidate under review (ecosystem1936 and correction1983 in the shannon space), not yet integrated or registered in the Hub. Native Faustus project74d2bc0f38db is linked to that space.
+
+## Corrections awaiting integration (1983)
+
+A microcontroller board without its ground connection is a wiring error and produces no invented operating point. Pin and supply voltage checks use the board's own ground reference. Loads propagate from downstream converters to their sources in dependency order, including on-board regulators; changing component order does not change the power budget. Converter cycles are reported explicitly.
+
+Different measurements or checks saved in the same second receive unique record IDs and are published atomically. Existing record IDs remain readable.
+
+Validation:38 tests pass and2 are skipped because no C compiler is available. Eight review regressions include a real MCP stdio round trip and immutable same-second measurement records. Brave on an isolated instance reports the missing MCU ground, a584mA load against a100mA upstream regulator, and589mA at the supply. These are invented circuits, not physical board measurements. No models, GPUs or hardware were used.
+
 Small electronics on your own PC: a circuit, the microcontroller that reads it, its firmware and its box, checked together. Shannon catches the wiring, limit and firmware mistakes that cost a board respin, says how accurate a sensor chain really is once every tolerance is counted, writes the firmware conversion table that matches the circuit, gives acceptance bands for the first physical test, and sizes an enclosure for Vulcan's Hoard.
 
 It is not a schematic editor and does not launch KiCad: it reads KiCad's netlist export, or a design written as JSON.

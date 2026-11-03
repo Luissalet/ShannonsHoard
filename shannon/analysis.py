@@ -24,6 +24,34 @@ def _mcus(d):
     return [(ref, c) for ref, c in d["_refs"].items() if c["kind"] == "mcu"]
 
 
+def _ground_pin(board):
+    return next(pin for pin, info in board["pins"].items()
+                if "power" in info["caps"] and info.get("supply") == 0)
+
+
+def _power_order(d, outs, pn):
+    """Converters ordered from downstream loads towards their power source."""
+    net = lambda ref, pin: pn.get((ref, pin), [None])[0]
+    pending = {}
+    for ref, c in d["_refs"].items():
+        if c["kind"] == "regulator":
+            pending[ref] = {"ref":ref, "out":net(ref,"OUT"), "in":net(ref,"IN")}
+    for ref, pin, vout, max_ma in outs:
+        board = MCUS[d["_refs"][ref]["part"]]
+        inp = next((net(ref,p) for p in board.get("power_in",[]) if net(ref,p)),None)
+        pending[f"{ref}.{pin}"] = {"ref":ref, "pin":pin, "out":net(ref,pin), "in":inp,
+                                   "vout":vout, "max_ma":max_ma}
+    order = []
+    while pending:
+        ready = sorted(key for key, item in pending.items()
+                       if item["out"] is None or not any(other["in"] == item["out"] for other in pending.values()))
+        if not ready:
+            raise DesignError("power-supply converter cycle: " + ", ".join(sorted(pending)))
+        for key in ready:
+            order.append(pending.pop(key))
+    return order
+
+
 def connectivity(d) -> list[dict]:
     issues = []
     pn = pin_net(d)
@@ -40,6 +68,10 @@ def connectivity(d) -> list[dict]:
         if len(nets) > 1:
             issues.append(_issue("error", "short", f"{ref}.{pin} is on several nets ({', '.join(nets)}): they are shorted", f"{ref}.{pin}"))
     for ref, c in d["_refs"].items():
+        if c["kind"] == "mcu":
+            pin = _ground_pin(MCUS[c["part"]])
+            if (ref,pin) not in pn:
+                issues.append(_issue("error", "mcu-ground-unwired", f"{ref}.{pin} has no ground connection", f"{ref}.{pin}"))
         if c["kind"] in ("resistor", "capacitor", "ntc", "led", "regulator", "source"):
             for pin in component_pins(c):
                 if (ref, pin) not in pn:
@@ -76,6 +108,7 @@ def electrical(d) -> tuple[list[dict], dict]:
         issues.append(_issue("error", "rail-conflict", f"net {net} is driven by {', '.join(refs)} at once", net))
     if conflicts:
         return issues, report  # the operating point is undefined with two sources on one rail
+    power_order = _power_order(d, outs, pn)
     params = nominal_params(d)
     sensor = d.get("sensor") or {}
     t_nom = 25.0
@@ -87,10 +120,14 @@ def electrical(d) -> tuple[list[dict], dict]:
     sweep = solve(d, params, temps)
     for ref, c in _mcus(d):
         board = MCUS[c["part"]]
+        board_ground = net_of(ref, _ground_pin(board))
+        if board_ground is None:
+            issues.append(_issue("error", "mcu-ground-unwired", f"{ref} has no ground connection", ref))
+            continue
         for (r, pin), nets in pn.items():
             if r != ref or "power" in board["pins"][pin]["caps"]:
                 continue
-            v = sweep[nets[0]]
+            v = sweep[nets[0]] - sweep[board_ground]
             if v.max() > board["max_pin_v"] + 1e-6:
                 issues.append(_issue("error", "pin-overvoltage",
                                      f"{ref}.{pin} reaches {v.max():.2f} V, above the {board['max_pin_v']} V limit of the {board['label']}", f"{ref}.{pin}"))
@@ -101,7 +138,7 @@ def electrical(d) -> tuple[list[dict], dict]:
                 continue
             if pin in board.get("power_in", []):
                 continue
-            v = volts[net_of(ref, pin)]
+            v = volts[net_of(ref, pin)] - volts[board_ground]
             if abs(v - info["supply"]) > 0.1 * info["supply"]:
                 issues.append(_issue("error", "supply-mismatch", f"{ref}.{pin} expects {info['supply']} V and gets {v:.2f} V", f"{ref}.{pin}"))
     loads = {}
@@ -173,28 +210,28 @@ def electrical(d) -> tuple[list[dict], dict]:
         if c["kind"] == "generic" and c.get("current_ma") and c.get("rail"):
             loads.setdefault(c["rail"], []).append((ref, float(c["current_ma"])))
     budget = []
-    # Boards' own regulators first: their load moves to the board's input.
-    for ref, pin, vout, max_ma in outs:
-        net = net_of(ref, pin)
-        i_out = sum(i for name, i in loads.get(net, []) if name != ref)
-        budget.append({"regulator": f"{ref}.{pin}", "rail": net, "load_ma": i_out, "max_ma": max_ma,
-                       "vin": None, "dropout": None, "dissipation_w": None, "loads": loads.get(net, [])})
-        if i_out > max_ma:
-            issues.append(_issue("error", "board-regulator-overload", f"{ref}.{pin} supplies {i_out:.0f} mA, above the board's {max_ma:.0f} mA", ref))
-        board = MCUS[d["_refs"][ref]["part"]]
-        inp = next((net_of(ref, p) for p in board.get("power_in", []) if net_of(ref, p)), None)
-        if inp:
-            loads.setdefault(inp, []).append((f"{ref}.{pin}", i_out))
-    for ref, c in d["_refs"].items():
-        if c["kind"] != "regulator":
+    # Finish every downstream converter before computing the load of its parent.
+    # This includes on-board regulators and is independent of component order.
+    for converter in power_order:
+        ref = converter["ref"]
+        out_net, in_net = converter["out"], converter["in"]
+        if "pin" in converter:
+            pin, max_ma = converter["pin"], converter["max_ma"]
+            i_out = sum(i for name, i in loads.get(out_net, []) if name != ref)
+            budget.append({"regulator": f"{ref}.{pin}", "rail": out_net, "load_ma": i_out, "max_ma": max_ma,
+                           "vin": None, "dropout": None, "dissipation_w": None, "loads": list(loads.get(out_net, []))})
+            if i_out > max_ma:
+                issues.append(_issue("error", "board-regulator-overload", f"{ref}.{pin} supplies {i_out:.0f} mA, above the board's {max_ma:.0f} mA", ref))
+            if in_net:
+                loads.setdefault(in_net, []).append((f"{ref}.{pin}", i_out))
             continue
-        out_net, in_net = net_of(ref, "OUT"), net_of(ref, "IN")
+        c = d["_refs"][ref]
         i_out = sum(i for _, i in loads.get(out_net, []))
         vin = volts.get(in_net, 0.0)
         headroom = vin - c["vout"]
         diss = max(0.0, headroom) * i_out / 1000
         budget.append({"regulator": ref, "rail": out_net, "load_ma": i_out, "max_ma": c["max_ma"], "vin": vin,
-                       "dropout": c["dropout"], "dissipation_w": diss, "loads": loads.get(out_net, [])})
+                       "dropout": c["dropout"], "dissipation_w": diss, "loads": list(loads.get(out_net, []))})
         if i_out > c["max_ma"]:
             issues.append(_issue("error", "regulator-overload", f"{ref} supplies {i_out:.0f} mA, above its {c['max_ma']:.0f} mA", ref))
         if headroom < c["dropout"]:
