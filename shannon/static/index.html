@@ -247,8 +247,8 @@ async function loadRecords() {
 window.hoardCopilot = {
   context: async () => ({
     editor: { kind: 'electronic_design', draft: $('#design').value },
-    selected_example: $('#example').value,
-    last_operation: lastOperation && structuredClone(lastOperation),
+    view: { selected_example: $('#example').value,
+      last_operation: lastOperation && structuredClone(lastOperation) },
   }),
 };
 loadExamples().catch((e) => setStatus(e.message, 'bad'));
