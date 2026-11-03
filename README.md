@@ -2,9 +2,9 @@
 
 MCP declares examples, parts, in-memory firmware headers and enclosure specs as pure reads, available to Faustus in Plan mode. These helpers create no check records or files. Checks, sensor studies and measurement evaluation keep their existing record persistence and are not labelled as reads. The combined suite passes40tests with2C-compiler skips, including the real MCP wire contract.
 
-Family integration1988 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current circuit draft, including incomplete JSON, and the last operation with its exact input and result summary. An edited draft stays distinct from the previous operation. The conversation, model and tools remain in Faustus; Shannon adds no conversation loop. MCP discovery starts no HTTP application. This integration remains a candidate awaiting review and integration.
+Family integration1988 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current circuit draft, including incomplete JSON, and the last operation with its exact input and result summary. An edited draft stays distinct from the previous operation. The conversation, model and tools remain in Faustus; Shannon adds no conversation loop. MCP discovery starts no HTTP application.
 
-Status: candidate under review (ecosystem1936 and correction1983 in the shannon space), not yet integrated or registered in the Hub. Native Faustus project74d2bc0f38db is linked to that space.
+Status: integrated in main and listed in the Hub (explicit start). History: ecosystem1936, correction1983, family integration1988, icon1996, MCP helpers2000 in the shannon Ágora space. Native Faustus project74d2bc0f38db is linked to that space.
 
 ## Corrections awaiting integration (1983)
 
