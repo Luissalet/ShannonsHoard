@@ -1,8 +1,6 @@
 # Objetivos futuros
 
-Integración común1988 preparada: panel, contexto de circuito y arranque explícito adaptable. Validación del host añadida; suite39 positiva y2 pruebas C omitidas por compilador ausente. Pendiente de revisión e integración junto a la base y correcciones1983.
-
-Entrega inmediata: revisar e integrar las correcciones1983 y la baseecosystem1936; registrar el Hoard y conectar sus herramientas. El candidato no está integrado por tener38pruebas positivas.
+Base, correcciones, panel y herramientas integrados enMain. Conector nativo y arranque explícito delHub comprobados por separado. El estado de integración no equivale a aprobación de revisión ni a prueba física. README/FAUSTUS describen la disponibilidad actual.
 
 1. Análisis en alterna y transitorio (filtro RC del ADC, tiempo de asentamiento) y ruido.
 2. Sensores digitales (I2C/SPI): direcciones, pull-ups, niveles lógicos y velocidad del bus contra el firmware.

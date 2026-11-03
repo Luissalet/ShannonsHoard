@@ -1,18 +1,18 @@
 # Shannon's Hoard
 
-MCP declares examples, parts, in-memory firmware headers and enclosure specs as pure reads, available to Faustus in Plan mode. These helpers create no check records or files. Checks, sensor studies and measurement evaluation keep their existing record persistence and are not labelled as reads. The combined suite passes40tests with2C-compiler skips, including the real MCP wire contract.
+MCP declares examples, parts, in-memory firmware headers and enclosure specs as pure reads, available to Faustus in Plan mode. These helpers create no check records or files. Checks, sensor studies and measurement evaluation keep their existing record persistence and are not labelled as reads. The combined suite passes40tests with2GCC/cc-specific skips, including the real MCP wire contract.
 
 Family integration1988 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current circuit draft, including incomplete JSON, and the last operation with its exact input and result summary. An edited draft stays distinct from the previous operation. The conversation, model and tools remain in Faustus; Shannon adds no conversation loop. MCP discovery starts no HTTP application.
 
 Status: integrated in main and listed in the Hub (explicit start). History: ecosystem1936, correction1983, family integration1988, icon1996, MCP helpers2000 in the shannon Ágora space. Native Faustus project74d2bc0f38db is linked to that space.
 
-## Corrections awaiting integration (1983)
+## Integrated corrections (1983)
 
 A microcontroller board without its ground connection is a wiring error and produces no invented operating point. Pin and supply voltage checks use the board's own ground reference. Loads propagate from downstream converters to their sources in dependency order, including on-board regulators; changing component order does not change the power budget. Converter cycles are reported explicitly.
 
 Different measurements or checks saved in the same second receive unique record IDs and are published atomically. Existing record IDs remain readable.
 
-Validation:38 tests pass and2 are skipped because no C compiler is available. Eight review regressions include a real MCP stdio round trip and immutable same-second measurement records. Brave on an isolated instance reports the missing MCU ground, a584mA load against a100mA upstream regulator, and589mA at the supply. These are invented circuits, not physical board measurements. No models, GPUs or hardware were used.
+Validation:38 tests pass and2 are skipped by the GCC/cc-specific checks. Eight review regressions include a real MCP stdio round trip and immutable same-second measurement records. Brave on an isolated instance reports the missing MCU ground, a584mA load against a100mA upstream regulator, and589mA at the supply. These are invented circuits, not physical board measurements. No models, GPUs or hardware were used.
 
 Small electronics on your own PC: a circuit, the microcontroller that reads it, its firmware and its box, checked together. Shannon catches the wiring, limit and firmware mistakes that cost a board respin, says how accurate a sensor chain really is once every tolerance is counted, writes the firmware conversion table that matches the circuit, gives acceptance bands for the first physical test, and sizes an enclosure for Vulcan's Hoard.
 
@@ -65,3 +65,7 @@ python -m venv .venv
 ## Limits
 
 DC only: no transients, filtering, noise, self-heating of the thermistor or ADC sampling effects; LEDs and MCU outputs are handled by the power budget, not by the nodal solver. The ESP32 ADC is modelled as ideal and linear; the real one needs calibration. Only three boards and three regulators are described. Firmware reading is pattern-based for Arduino-style code, not a compiler. A simulation does not prove how a real board behaves, and nothing here certifies compliance; the test bands exist so the first real readings can say whether the model holds.
+
+Both generated-header cases compile and execute with the installed MSVC compiler (`/TC /std:c11 /W4 /WX`), including a name beginning with a digit. Calibration points and both rail codes pass. This supplements the two GCC-specific pytest skips and does not certify a physical board.
+
+Native registration: connector `c157889e-09ea-46cd-b296-6182e2a5effd`, MCP server `0605ea67`. Main source and installed dependencies checked; client verification invokes the pure helpers without creating app data. The HTTP application retains its manual stop; isolated QA uses another port. The implementation was integrated by Claude without an approved cross-review; the historical review votes remain unchanged.
