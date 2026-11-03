@@ -12,7 +12,8 @@ _CALL = re.compile(r"\b(pinMode|digitalWrite|digitalRead|analogRead|analogWrite|
 
 
 def _strip_comments(src: str) -> str:
-    src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
+    # Keep the newlines of block comments so line numbers stay right.
+    src = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n") or " ", src, flags=re.S)
     return re.sub(r"//[^\n]*", " ", src)
 
 
@@ -40,7 +41,10 @@ def parse(source: str, board: str) -> dict:
                 unresolved.append({"call": fn, "arg": arg, "line": line})
             continue
         try:
-            pin = pin_name(_resolve(arg, symbols), board)
+            value = _resolve(arg, symbols)
+            if fn == "analogRead" and board == "arduino_uno" and isinstance(value, int) and 0 <= value <= 5:
+                value = f"A{value}"  # analogRead(0..5) means A0..A5 on the Uno
+            pin = pin_name(value, board)
         except ValueError:
             unresolved.append({"call": fn, "arg": arg, "line": line})
             continue
@@ -90,12 +94,17 @@ def pin_name(value, board: str) -> str:
     raise ValueError(f"pin {value} does not exist on {board}")
 
 
-def lookup_header(name: str, codes: list[int], temps: list[float], unit: str = "C") -> str:
-    """C header with a monotonic code->value table and linear interpolation."""
+def lookup_header(name: str, codes: list[int], temps: list[float], unit: str = "C", full: int = 4095) -> str:
+    """C header with a monotonic code->value table and linear interpolation.
+    Codes 0 and full scale mean an open or shorted sensor and return NAN."""
     ident = re.sub(r"\W", "_", name).upper()
+    if not ident or ident[0].isdigit():
+        ident = "S_" + ident
     rows = ",\n".join(f"  {{{c}, {t:.3f}f}}" for c, t in zip(codes, temps))
     return f"""// Generated from the circuit model: ADC code -> {unit}. Linear interpolation between points.
+// Codes 0 and {full} (rail) return NAN: open or shorted sensor, not a reading.
 #pragma once
+#include <math.h>
 #include <stdint.h>
 typedef struct {{ uint16_t code; float value; }} {ident}_point_t;
 static const {ident}_point_t {ident}_TABLE[] = {{
@@ -105,6 +114,7 @@ static const int {ident}_POINTS = {len(codes)};
 static inline float {ident.lower()}_from_code(uint16_t code) {{
   const {ident}_point_t *t = {ident}_TABLE;
   int n = {ident}_POINTS;
+  if (code == 0 || code >= {full}) return NAN;
   int up = t[n - 1].code > t[0].code;
   if (up ? code <= t[0].code : code >= t[0].code) return t[0].value;
   if (up ? code >= t[n - 1].code : code <= t[n - 1].code) return t[n - 1].value;

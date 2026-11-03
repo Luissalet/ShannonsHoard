@@ -58,22 +58,30 @@ def connectivity(d) -> list[dict]:
 
 def electrical(d) -> tuple[list[dict], dict]:
     """Nominal operating point, pin voltage limits, regulators and power budget."""
+    from .circuit import board_outputs
     issues, report = [], {}
+    pn = pin_net(d)
+    net_of = lambda ref, pin: pn.get((ref, pin), [None])[0]
+    # Who drives each net: supplies, regulators and boards' own regulators.
+    drivers = {}
+    for ref, c in d["_refs"].items():
+        pin = {"source": "+", "regulator": "OUT"}.get(c["kind"])
+        if pin and (ref, pin) in pn:
+            drivers.setdefault(net_of(ref, pin), []).append(ref)
+    outs = board_outputs(d)
+    for ref, pin, _, _ in outs:
+        drivers.setdefault(net_of(ref, pin), []).append(f"{ref}.{pin}")
+    conflicts = [(net, refs) for net, refs in drivers.items() if len(refs) > 1]
+    for net, refs in conflicts:
+        issues.append(_issue("error", "rail-conflict", f"net {net} is driven by {', '.join(refs)} at once", net))
+    if conflicts:
+        return issues, report  # the operating point is undefined with two sources on one rail
     params = nominal_params(d)
     sensor = d.get("sensor") or {}
     t_nom = 25.0
     volts = {k: float(v[0]) for k, v in solve(d, params, [t_nom]).items()}
     report["operating_point"] = {"temperature": t_nom, "volts": volts}
-    pn = pin_net(d)
-    # Supplies on the same net with different voltages.
-    drivers = {}
-    for ref, c in d["_refs"].items():
-        pin = {"source": "+", "regulator": "OUT"}.get(c["kind"])
-        if pin and (ref, pin) in pn:
-            drivers.setdefault(pn[(ref, pin)][0], []).append(ref)
-    for net, refs in drivers.items():
-        if len(refs) > 1:
-            issues.append(_issue("error", "rail-conflict", f"net {net} is driven by {', '.join(refs)} at once", net))
+    active_out = {(r, p) for r, p, _, _ in outs}
     # MCU pin voltages, across the sensor range when there is one.
     temps = np.linspace(*sensor["range"], 15) if sensor.get("range") else np.array([t_nom])
     sweep = solve(d, params, temps)
@@ -88,61 +96,71 @@ def electrical(d) -> tuple[list[dict], dict]:
                                      f"{ref}.{pin} reaches {v.max():.2f} V, above the {board['max_pin_v']} V limit of the {board['label']}", f"{ref}.{pin}"))
             if v.min() < -0.3:
                 issues.append(_issue("error", "pin-negative", f"{ref}.{pin} goes to {v.min():.2f} V", f"{ref}.{pin}"))
-        # Board supply pins fed with the right voltage.
         for pin, info in board["pins"].items():
-            if "power" in info["caps"] and info.get("supply") and (ref, pin) in pn:
-                v = volts[pn[(ref, pin)][0]]
-                if abs(v - info["supply"]) > 0.1 * info["supply"] and pin in ("3V3", "5V"):
-                    issues.append(_issue("error", "supply-mismatch", f"{ref}.{pin} expects {info['supply']} V and gets {v:.2f} V", f"{ref}.{pin}"))
-    # LEDs: current from the series resistor and the driving pin or rail.
+            if "power" not in info["caps"] or not info.get("supply") or (ref, pin) not in pn or (ref, pin) in active_out:
+                continue
+            if pin in board.get("power_in", []):
+                continue
+            v = volts[net_of(ref, pin)]
+            if abs(v - info["supply"]) > 0.1 * info["supply"]:
+                issues.append(_issue("error", "supply-mismatch", f"{ref}.{pin} expects {info['supply']} V and gets {v:.2f} V", f"{ref}.{pin}"))
     loads = {}
+    # LEDs: the series resistor is the one on the LED's net that is not a rail;
+    # the chain runs between the far end of that resistor and the LED's other pin.
     led_rows = []
+    gnd = ground_net(d)
     for ref, c in d["_refs"].items():
         if c["kind"] != "led":
             continue
-        a_net = pn.get((ref, "A"), [None])[0]
-        k_net = pn.get((ref, "K"), [None])[0]
-        res = [(r, rc) for r, rc in d["_refs"].items() if rc["kind"] == "resistor"
-               and any(pn.get((r, p), [None])[0] in (a_net, k_net) for p in ("1", "2"))]
-        if not res:
+        ends = {p: net_of(ref, p) for p in ("A", "K")}
+        series = None
+        for side, net in ends.items():
+            if net is None or net == gnd or net in drivers:
+                continue
+            res = [r for r, rc in d["_refs"].items() if rc["kind"] == "resistor" and net in (net_of(r, "1"), net_of(r, "2"))]
+            if res:
+                series = (side, net, res[0])
+                break
+        if series is None:
             issues.append(_issue("error", "led-no-resistor", f"LED {ref} has no series resistor", ref))
             continue
-        r, rc = res[0]
-        other = [pn.get((r, p), [None])[0] for p in ("1", "2") if pn.get((r, p), [None])[0] not in (a_net, k_net)]
-        drive_net = other[0] if other else None
-        driver = None
-        for (rr, pin), nets in pn.items():
-            if nets[0] == drive_net and d["_refs"].get(rr, {}).get("kind") == "mcu":
-                driver = (rr, pin)
+        side, mid, r = series
+        far = net_of(r, "2") if net_of(r, "1") == mid else net_of(r, "1")
+        other = ends["K" if side == "A" else "A"]
+        anode_end, cathode_end = (far, other) if side == "A" else (other, far)
+
+        def mcu_on(net):
+            for (rr, pin), nets in pn.items():
+                if nets[0] == net and d["_refs"].get(rr, {}).get("kind") == "mcu" and "power" not in MCUS[d["_refs"][rr]["part"]]["pins"][pin]["caps"]:
+                    return rr, pin
+            return None
+        drv_a, drv_k = mcu_on(anode_end), mcu_on(cathode_end)
+        v_hi = MCUS[d["_refs"][drv_a[0]]["part"]]["logic_v"] if drv_a else volts.get(anode_end, 0.0)
+        v_lo = 0.0 if drv_k else volts.get(cathode_end, 0.0)
+        i_ma = max(0.0, (v_hi - v_lo - c["vf"]) / d["_refs"][r]["value"] * 1000)
+        driver = drv_a or drv_k
+        led_rows.append({"led": ref, "resistor": r, "drive": f"{driver[0]}.{driver[1]}" if driver else anode_end, "current_ma": i_ma})
         if driver:
-            board = MCUS[d["_refs"][driver[0]]["part"]]
-            v_drive = board["logic_v"]
-            caps = board["pins"][driver[1]]["caps"]
+            caps = MCUS[d["_refs"][driver[0]]["part"]]["pins"][driver[1]]["caps"]
             if "out" not in caps:
                 issues.append(_issue("error", "pin-cannot-drive", f"LED {ref} is driven from {driver[0]}.{driver[1]}, which is input-only", f"{driver[0]}.{driver[1]}"))
-        else:
-            v_drive = volts.get(drive_net, 0.0)
-        i_ma = max(0.0, (v_drive - c["vf"]) / rc["value"] * 1000)
-        led_rows.append({"led": ref, "resistor": r, "drive": f"{driver[0]}.{driver[1]}" if driver else drive_net, "current_ma": i_ma})
-        if driver:
             limit = PIN_CURRENT_MA[d["_refs"][driver[0]]["part"]]
             if i_ma > limit:
-                issues.append(_issue("error", "pin-overcurrent", f"LED {ref} draws {i_ma:.1f} mA from {driver[0]}.{driver[1]} (recommended ≤ {limit} mA)", ref))
-            rail = _board_rail(d, driver[0], pn)
-            if rail:
-                loads.setdefault(rail, []).append((ref, i_ma))
-        elif drive_net:
-            loads.setdefault(drive_net, []).append((ref, i_ma))
+                issues.append(_issue("error", "pin-overcurrent", f"LED {ref} draws {i_ma:.1f} mA through {driver[0]}.{driver[1]} (recommended ≤ {limit} mA)", ref))
+        rail = _board_rail(d, drv_a[0], pn) if drv_a else (anode_end if anode_end in drivers else None)
+        if rail is None and drv_k:
+            rail = anode_end if anode_end in drivers else None
+        if rail:
+            loads.setdefault(rail, []).append((ref, i_ma))
     report["leds"] = led_rows
     # Resistive currents drawn from each driven net (divider currents).
-    for net, refs in drivers.items():
+    for net in drivers:
         for ref, c in d["_refs"].items():
             if c["kind"] in ("resistor", "ntc"):
-                a, k = pn.get((ref, "1"), [None])[0], pn.get((ref, "2"), [None])[0]
+                a, k = net_of(ref, "1"), net_of(ref, "2")
                 if net in (a, k) and a and k:
-                    rv = c["value"] if c["kind"] == "resistor" else c["r25"]
-                    # Current through the element at the operating point.
-                    i = abs(volts[a] - volts[k]) / (rv if c["kind"] == "resistor" else _r_at(c, t_nom)) * 1000
+                    rv = c["value"] if c["kind"] == "resistor" else _r_at(c, t_nom)
+                    i = abs(volts[a] - volts[k]) / rv * 1000
                     if i > 1e-6:
                         loads.setdefault(net, []).append((ref, i))
     for ref, c in _mcus(d):
@@ -155,14 +173,26 @@ def electrical(d) -> tuple[list[dict], dict]:
         if c["kind"] == "generic" and c.get("current_ma") and c.get("rail"):
             loads.setdefault(c["rail"], []).append((ref, float(c["current_ma"])))
     budget = []
+    # Boards' own regulators first: their load moves to the board's input.
+    for ref, pin, vout, max_ma in outs:
+        net = net_of(ref, pin)
+        i_out = sum(i for name, i in loads.get(net, []) if name != ref)
+        budget.append({"regulator": f"{ref}.{pin}", "rail": net, "load_ma": i_out, "max_ma": max_ma,
+                       "vin": None, "dropout": None, "dissipation_w": None, "loads": loads.get(net, [])})
+        if i_out > max_ma:
+            issues.append(_issue("error", "board-regulator-overload", f"{ref}.{pin} supplies {i_out:.0f} mA, above the board's {max_ma:.0f} mA", ref))
+        board = MCUS[d["_refs"][ref]["part"]]
+        inp = next((net_of(ref, p) for p in board.get("power_in", []) if net_of(ref, p)), None)
+        if inp:
+            loads.setdefault(inp, []).append((f"{ref}.{pin}", i_out))
     for ref, c in d["_refs"].items():
         if c["kind"] != "regulator":
             continue
-        out_net, in_net = pn.get((ref, "OUT"), [None])[0], pn.get((ref, "IN"), [None])[0]
+        out_net, in_net = net_of(ref, "OUT"), net_of(ref, "IN")
         i_out = sum(i for _, i in loads.get(out_net, []))
         vin = volts.get(in_net, 0.0)
         headroom = vin - c["vout"]
-        diss = headroom * i_out / 1000
+        diss = max(0.0, headroom) * i_out / 1000
         budget.append({"regulator": ref, "rail": out_net, "load_ma": i_out, "max_ma": c["max_ma"], "vin": vin,
                        "dropout": c["dropout"], "dissipation_w": diss, "loads": loads.get(out_net, [])})
         if i_out > c["max_ma"]:
@@ -174,7 +204,7 @@ def electrical(d) -> tuple[list[dict], dict]:
         loads.setdefault(in_net, []).append((ref, i_out + c.get("quiescent_ma", 0.0)))
     for ref, c in d["_refs"].items():
         if c["kind"] == "source":
-            net = pn.get((ref, "+"), [None])[0]
+            net = net_of(ref, "+")
             i = sum(x for _, x in loads.get(net, []))
             budget.append({"source": ref, "rail": net, "load_ma": i, "max_ma": c.get("max_ma")})
             if c.get("max_ma") and i > c["max_ma"]:
@@ -189,7 +219,11 @@ def _r_at(c, t):
 
 
 def _board_rail(d, ref, pn):
+    """The net that powers a board: its power input if fed, else its supply pin."""
     board = MCUS[d["_refs"][ref]["part"]]
+    for pin in board.get("power_in", []):
+        if (ref, pin) in pn:
+            return pn[(ref, pin)][0]
     for pin, info in board["pins"].items():
         if "power" in info["caps"] and info.get("supply") and (ref, pin) in pn:
             return pn[(ref, pin)][0]
@@ -265,6 +299,12 @@ def sensor_chain(d, samples=2000, seed=7) -> dict:
     net = pn[(ref, pin)][0]
     bits, vref, vref_tol, board = _adc(d)
     full = 2 ** bits - 1
+    mcu_ref = s["pin"].split(".")[0]
+    ref_net = None
+    if board.get("adc_ref_rail") and not s.get("adc_ref"):
+        ref_net = pn.get((mcu_ref, board["adc_ref_rail"]), [None])[0]
+        if ref_net:
+            vref = float(solve(d, nominal_params(d), [25.0])[ref_net][0])
     lo, hi = s["range"]
     temps = np.arange(lo, hi + 1e-9, s["step"])
     nom = nominal_params(d)
@@ -286,7 +326,10 @@ def sensor_chain(d, samples=2000, seed=7) -> dict:
         draw = v * (1 + rng.uniform(-1, 1, samples) * tol.get(k, 0.0))
         params[k] = np.repeat(draw, len(temps))
     vref_draw = np.repeat(vref * (1 + rng.uniform(-1, 1, samples) * vref_tol), len(temps))
-    v = solve(d, params, T)[net]
+    sol = solve(d, params, T)
+    v = sol[net]
+    if ref_net:
+        vref_draw = sol[ref_net]  # ratiometric: the ADC reference is the rail that feeds the sensor
     code = np.clip(np.round(v / vref_draw * full), 0, full)
     t_read = np.interp(code, inv_x, inv_y)
     err = (t_read - T).reshape(samples, len(temps))
@@ -306,7 +349,10 @@ def sensor_chain(d, samples=2000, seed=7) -> dict:
         for k in nom:
             pc.setdefault(k, cp[k])
         vref_c = np.repeat(vref * (1 + sign[:, -1] * vref_tol), len(temps))
-        vc = solve(d, pc, Tc)[net]
+        solc = solve(d, pc, Tc)
+        vc = solc[net]
+        if ref_net:
+            vref_c = solc[ref_net]
         cc = np.clip(np.round(vc / vref_c * full), 0, full)
         ec = (np.interp(cc, inv_x, inv_y) - Tc).reshape(Nc, len(temps))
         worst = np.abs(ec).max(0)
@@ -337,7 +383,7 @@ def sensor_chain(d, samples=2000, seed=7) -> dict:
     c_tab = np.clip(np.round(solve(d, nom, t_tab)[net] / vref * full), 0, full).astype(int)
     keep = np.concatenate([[True], np.diff(c_tab) != 0])
     c_tab, t_tab = c_tab[keep], t_tab[keep]
-    header = fw.lookup_header(d["name"] + "_" + out["variable"], c_tab.tolist(), t_tab.tolist(), out["unit"])
+    header = fw.lookup_header(d["name"] + "_" + out["variable"], c_tab.tolist(), t_tab.tolist(), out["unit"], full)
     rt = np.interp(code_nom, c_tab[np.argsort(c_tab)], t_tab[np.argsort(c_tab)]) - temps
     out["firmware_table"] = {"points": len(c_tab), "header": header,
                              "round_trip_max_error": float(np.abs(rt[(code_nom > 0) & (code_nom < full)]).max()) if np.any((code_nom > 0) & (code_nom < full)) else None}
@@ -353,8 +399,11 @@ def test_plan(d, chain: dict, points=None, noise_lsb: int = 4) -> dict:
         points = [{"value": v, "how": "reference thermometer"} for v in (lo, (lo + hi) / 2, hi)]
     rows = {r["value"]: r for r in chain["rows"]}
     full = 2 ** chain["adc_bits"] - 1
+    lo, hi = min(rows), max(rows)
     plan = []
     for p in points:
+        if not lo <= float(p["value"]) <= hi:
+            raise DesignError(f"test point {p['value']} is outside the sensor range {lo}..{hi}")
         nearest = min(rows, key=lambda v: abs(v - p["value"]))
         r = rows[nearest]
         plan.append({"value": float(p["value"]), "how": p.get("how", ""), "expected_code": r["code"],
@@ -368,6 +417,8 @@ def evaluate_measurements(plan: dict, measurements: list[dict], adc_bits: int) -
     by_value = {p["value"]: p for p in plan["points"]}
     out = []
     for m in measurements:
+        if m.get("value") is None:
+            raise DesignError("every reading needs the reference value it was taken at")
         p = by_value.get(float(m["value"]))
         codes = [int(c) for c in (m.get("codes") or [m.get("code")]) if c is not None]
         if p is None or not codes:
