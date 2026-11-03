@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pathlib
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -10,10 +11,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import service
+from .hoard_link.copilot import install_copilot
 
 STATIC = pathlib.Path(__file__).resolve().parent / "static"
 app = FastAPI(title="Shannon's Hoard", version=service.VERSION)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+install_copilot(app, "shannon", os.environ.get("SHANNON_DATA", str(STATIC.parents[1] / "data")), app_name="Shannon's Hoard")
 
 
 class DesignIn(BaseModel):

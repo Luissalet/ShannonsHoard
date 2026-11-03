@@ -30,7 +30,14 @@
   "app": {
     "url_default": "http://127.0.0.1:5245",
     "ui_url": "{APP_URL}/",
-    "health": {"path": "/api/health", "expect": {"service": "shannon-hoard"}}
+    "health": {"path": "/api/health", "expect": {"service": "shannon-hoard"}},
+    "launch_hint": {
+      "kind": "process", "executable": "{PYTHON}",
+      "argv": ["-m", "shannon"], "cwd": "{SHANNON_DIR}",
+      "readiness": {"url": "{APP_URL}/api/health", "timeout_s": 20},
+      "port_argument": "--port"
+    },
+    "identify": {"service": ["shannon-hoard"], "title": ["shannon"]}
   },
   "mcp": {
     "transport": "stdio",
@@ -38,5 +45,9 @@
     "args": ["-m", "shannon.mcp_server"],
     "env": {"PYTHONPATH": "{SHANNON_DIR}", "SHANNON_DATA": "{SHANNON_DIR}/data"}
   },
-  "notes": "Candidate manifest, not registered in Hub. Explicit startup only (python -m shannon)."
+  "notes": "Candidate awaiting integration. Explicit startup only; MCP discovery starts no HTTP app. The canonical family copilot relays the conversation to Faustus; no separate model or loop.",
+  "x-family": {
+    "copilot": {"contract_version": "1.0", "info": "/api/copilot/info", "panel": "/api/copilot/panel.js", "proxy": "/api/copilot/proxy", "launcher": "/api/copilot/launcher.js"},
+    "agent_contract": false
+  }
 }

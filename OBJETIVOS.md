@@ -1,5 +1,7 @@
 # Objetivos futuros
 
+Integración común1988 preparada: panel, contexto de circuito y arranque explícito adaptable. Validación del host añadida; suite39 positiva y2 pruebas C omitidas por compilador ausente. Pendiente de revisión e integración junto a la base y correcciones1983.
+
 Entrega inmediata: revisar e integrar las correcciones1983 y la baseecosystem1936; registrar el Hoard y conectar sus herramientas. El candidato no está integrado por tener38pruebas positivas.
 
 1. Análisis en alterna y transitorio (filtro RC del ADC, tiempo de asentamiento) y ruido.
