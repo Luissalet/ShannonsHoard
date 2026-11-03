@@ -8,6 +8,7 @@ import json
 import os
 import pathlib
 import re
+import uuid
 
 from . import analysis, examples, kicad
 from .design import DesignError, validate
@@ -29,10 +30,13 @@ def _public(d: dict) -> dict:
 def _save(kind, design, out):
     stamp = dt.datetime.now(dt.timezone.utc)
     digest = hashlib.sha256(json.dumps(design, sort_keys=True, default=str).encode()).hexdigest()[:8]
-    rid = f"{stamp:%Y%m%d-%H%M%S}-{kind}-{digest}"
+    rid = f"{stamp:%Y%m%d-%H%M%S}-{kind}-{digest}-{uuid.uuid4().hex}"
     rec = {"id": rid, "kind": kind, "name": design.get("name"), "created": stamp.isoformat(timespec="seconds"),
            "version": VERSION, "design": design, "output": out}
-    (data_dir() / "records" / f"{rid}.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    target = data_dir() / "records" / f"{rid}.json"
+    pending = target.with_suffix(".tmp")
+    pending.write_text(json.dumps(rec, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    os.replace(pending, target)
     return rid
 
 
@@ -72,7 +76,7 @@ def check(design: dict, save: bool = True):
     def go():
         d = validate(design)
         issues = analysis.connectivity(d)
-        if not any(i["code"] in ("unknown-ref", "unknown-pin", "no-ground") for i in issues):
+        if not any(i["code"] in ("unknown-ref", "unknown-pin", "no-ground", "mcu-ground-unwired") for i in issues):
             e, rep = analysis.electrical(d)
             issues += e
         else:

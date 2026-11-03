@@ -23,9 +23,10 @@ def shannon_parts() -> dict:
 @mcp.tool()
 def shannon_check(design: dict) -> dict:
     """Check a design: connectivity (unknown pins, shorts, unconnected pins, floating nets), electrical limits across the
-    sensor range (pin over-voltage, rail conflicts, regulator dropout/overload/heat, LED and pin currents, power budget)
+    sensor range (pin over-voltage relative to the board ground, rail conflicts, regulator dropout/overload/heat,
+    LED and pin currents, power budget propagated through cascaded regulators independently of component order)
     and firmware coherence (pins read or driven by the code versus the wiring, ADC pins, input-only pins, ADC2 with Wi-Fi).
-    Missing values come back as questions. Saved as a record."""
+    A missing MCU ground is a wiring error. Missing values come back as questions. Saved as a record."""
     return service.check(design)
 
 
