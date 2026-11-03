@@ -1,5 +1,7 @@
 # Shannon's Hoard — capacidades para Faustus
 
+Lecturas MCP declaradas: shannon_examples, shannon_parts, shannon_firmware_header y shannon_enclosure. Devuelven datos o artefactos enmemoria, sin guardar ficheros/registros, y están disponibles en modoPlan. Check, estudio y evaluación de medidas conservan su persistencia. Sin cambios de permisos en Faustus. Conjunto40pruebas positivas y2omitidas por compiladorC ausente.
+
 Integración de familia1988: panel canónico mediante `/api/copilot`, borrador actual y última operación con su entrada exacta. Usa la conversación y los modelos globales de Faustus. Descubrir MCP no arranca HTTP; el Hub dispone de arranque explícito con puerto adaptable. Sin contrato HTTP agent; las9 herramientas propias se exponen por MCPstdio. Candidato pendiente de revisión e integración.
 
 Estado: v0.1.0, candidato (no registrado en Hub). Arranque explícito `python -m shannon` (puerto 5245). MCP stdio `python -m shannon.mcp_server`.
