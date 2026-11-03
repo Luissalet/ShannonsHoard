@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "shannon",
+  "name": "Shannon's Hoard",
+  "purpose": "Small electronics and mechatronics: wiring, electrical limits and firmware pin use checked together; sensor accuracy with tolerances; firmware lookup tables; physical test bands; enclosure specs for the 3D studio.",
+  "capabilities": [
+    "netlist-checks",
+    "kicad-netlist-import",
+    "pin-capabilities",
+    "pin-voltage-limits",
+    "power-budget",
+    "regulator-checks",
+    "firmware-pin-coherence",
+    "dc-operating-point",
+    "sensor-transfer",
+    "tolerance-monte-carlo",
+    "worst-case-analysis",
+    "firmware-lookup-table",
+    "physical-test-bands",
+    "measurement-evaluation",
+    "enclosure-cad-spec",
+    "missing-data-questions",
+    "persistent-checks"
+  ],
+  "placeholders": ["SHANNON_DIR", "PYTHON", "APP_URL"],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5245",
+    "PYTHON": "{SHANNON_DIR}/.venv/Scripts/python.exe"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5245",
+    "ui_url": "{APP_URL}/",
+    "health": {"path": "/api/health", "expect": {"service": "shannon-hoard"}}
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": ["-m", "shannon.mcp_server"],
+    "env": {"PYTHONPATH": "{SHANNON_DIR}", "SHANNON_DATA": "{SHANNON_DIR}/data"}
+  },
+  "notes": "Candidate manifest, not registered in Hub. Explicit startup only (python -m shannon)."
+}

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en" data-hoard-app="shannon">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shannon's Hoard</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/hoard-theme.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--hoard-border); background: var(--hoard-surface); flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 0; color: var(--hoard-text-muted); font-size: 14px; }
+  main { display: grid; grid-template-columns: minmax(320px, 440px) 1fr; gap: 18px; padding: 18px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  section.hoard-card { padding: 14px 16px; margin-bottom: 16px; }
+  h2 { font-family: var(--hoard-font-serif); font-size: 15px; letter-spacing: .02em; margin: 0 0 10px; color: var(--hoard-accent); }
+  h3 { font-size: 13px; margin: 16px 0 6px; color: var(--hoard-text-muted); font-weight: 600; }
+  label { display: block; font-size: 12px; color: var(--hoard-text-dim); margin: 10px 0 4px; }
+  select, textarea, input { width: 100%; background: var(--hoard-sunken); color: var(--hoard-text); border: 1px solid var(--hoard-border); border-radius: var(--hoard-radius-sm); padding: 7px 9px; font: 13px var(--hoard-font-sans); }
+  textarea { font: 12px/1.45 var(--hoard-font-mono); min-height: 120px; resize: vertical; }
+  #design { min-height: 340px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  .row > input { width: auto; flex: 1; min-width: 80px; }
+  .hoard-btn[disabled] { opacity: .5; cursor: progress; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hoard-border); margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--hoard-text-muted); padding: 8px 12px; cursor: pointer; font: 500 13px var(--hoard-font-sans); }
+  .tabs button.on { color: var(--hoard-accent); border-bottom-color: var(--hoard-accent); }
+  .pane { display: none; } .pane.on { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--hoard-border); vertical-align: top; }
+  th { color: var(--hoard-text-dim); font-weight: 500; font-size: 12px; }
+  .ok { color: var(--hoard-success); font-weight: 600; } .bad { color: var(--hoard-danger); font-weight: 600; } .warn { color: var(--hoard-warning); font-weight: 600; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .stat { background: var(--hoard-elevated); border-radius: var(--hoard-radius); padding: 10px 12px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--hoard-text-dim); }
+  .questions { border: 1px solid var(--hoard-warning); background: rgba(212,168,67,.08); border-radius: var(--hoard-radius); padding: 10px 14px; margin-bottom: 12px; }
+  ul.notes { margin: 6px 0 0; padding-left: 18px; color: var(--hoard-text-muted); font-size: 13px; }
+  .muted { color: var(--hoard-text-dim); font-size: 12px; }
+  pre { background: var(--hoard-sunken); border: 1px solid var(--hoard-border); border-radius: var(--hoard-radius); padding: 10px; overflow: auto; font: 12px/1.4 var(--hoard-font-mono); max-height: 420px; }
+  canvas { width: 100%; display: block; background: var(--hoard-sunken); border-radius: var(--hoard-radius); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--hoard-text-muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+  #status { min-height: 18px; font-size: 13px; color: var(--hoard-text-muted); margin-top: 8px; }
+  code { font-family: var(--hoard-font-mono); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="hoard-brand">Shannon's Hoard</h1>
+  <p>Small electronics: wiring, limits and firmware checked together, sensor accuracy with tolerances, test bands and enclosure</p>
+</header>
+<main>
+  <div>
+    <section class="hoard-card">
+      <h2>Design</h2>
+      <label for="example">Worked example</label>
+      <select id="example"></select>
+      <label for="design">Components, nets, sensor, firmware and board size (JSON)</label>
+      <textarea id="design" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="hoard-btn hoard-btn-primary" id="btn-check">Check design</button>
+        <button class="hoard-btn" id="btn-sensor">Sensor study</button>
+        <button class="hoard-btn" id="btn-header">Firmware table</button>
+        <button class="hoard-btn" id="btn-enclosure">Enclosure</button>
+      </div>
+      <div id="status" role="status"></div>
+    </section>
+    <section class="hoard-card">
+      <h2>Import from KiCad</h2>
+      <p class="muted" style="margin:0">Reads a netlist export (.net). KiCad is not needed here; a netlist only shows connectors, so say where the supply comes in.</p>
+      <label for="net-file">Netlist file</label>
+      <input id="net-file" type="file" accept=".net">
+      <div class="row"><input id="sup-net" placeholder="supply net, e.g. +5V"><input id="sup-v" type="number" step="any" placeholder="volts"><input id="sup-ma" type="number" step="any" placeholder="max mA"></div>
+      <div class="row"><button class="hoard-btn" id="btn-import">Import netlist</button></div>
+      <div id="import-report" class="muted"></div>
+    </section>
+  </div>
+  <div>
+    <section class="hoard-card">
+      <div class="tabs" role="tablist">
+        <button class="on" data-pane="checks">Checks</button>
+        <button data-pane="power">Power</button>
+        <button data-pane="sensor">Sensor</button>
+        <button data-pane="firmware">Firmware</button>
+        <button data-pane="enclosure">Enclosure</button>
+        <button data-pane="records">Records</button>
+      </div>
+      <div id="questions"></div>
+      <div class="pane on" id="pane-checks"><p class="muted">Pick an example and press Check design.</p></div>
+      <div class="pane" id="pane-power"><p class="muted">The power budget appears after a check.</p></div>
+      <div class="pane" id="pane-sensor"><p class="muted">Run the sensor study.</p></div>
+      <div class="pane" id="pane-firmware"><p class="muted">Firmware pin use appears after a check; the lookup table with Firmware table.</p></div>
+      <div class="pane" id="pane-enclosure"><p class="muted">Press Enclosure.</p></div>
+      <div class="pane" id="pane-records"><p class="muted">Loading…</p></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (v, d = 3) => (v === null || v === undefined) ? '—' : typeof v === 'number' ? (+v.toPrecision(d)).toString() : esc(v);
+let lastSensor = null;
+
+function setStatus(t, cls = '') { $('#status').className = cls; $('#status').textContent = t; }
+function busy(on) { document.querySelectorAll('button.hoard-btn').forEach((b) => (b.disabled = on)); }
+function design() { try { return JSON.parse($('#design').value); } catch (e) { throw new Error('design is not valid JSON: ' + e.message); } }
+async function api(path, body, raw = false) {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (raw && r.ok) return r.text();
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const d = j.detail || j; const e = new Error(d.error || JSON.stringify(d)); e.questions = d.questions || []; throw e; }
+  return j;
+}
+function tab(name) {
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.pane === name));
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + name));
+}
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { tab(b.dataset.pane); if (b.dataset.pane === 'records') loadRecords(); }));
+function showQuestions(e) {
+  const q = e.questions || [];
+  $('#questions').innerHTML = `<div class="questions"><b>${q.length ? 'Missing information' : 'Not valid'}:</b> ${esc(e.message)}${q.length ? '<ul class="notes">' + q.map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>' : ''}</div>`;
+}
+async function run(label, fn) {
+  busy(true); setStatus(label + '…'); $('#questions').innerHTML = '';
+  const t0 = performance.now();
+  try { await fn(); setStatus(`${label}: done in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
+  catch (e) { setStatus(`${label}: ${e.message}`, 'bad'); if (e.questions) showQuestions(e); }
+  finally { busy(false); }
+}
+function download(name, text, type = 'text/plain') {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+async function loadExamples() {
+  const ex = await api('/api/examples');
+  $('#example').innerHTML = ex.map((e) => `<option value="${e.id}">${esc(e.variant ? 'Broken: ' + e.title : e.title)}</option>`).join('');
+  await pick(ex[0].id);
+}
+async function pick(id) { $('#design').value = JSON.stringify(await api('/api/examples/' + encodeURIComponent(id)), null, 2); }
+$('#example').addEventListener('change', (e) => pick(e.target.value));
+
+const LEVEL = { error: 'bad', warning: 'warn' };
+$('#btn-check').addEventListener('click', () => run('Check', async () => {
+  const r = await api('/api/check', { design: design() });
+  const verdictCls = r.verdict === 'clean' ? 'ok' : r.verdict === 'errors' ? 'bad' : 'warn';
+  $('#pane-checks').innerHTML = `<div class="stats"><div class="stat"><b class="${verdictCls}">${esc(r.verdict)}</b><span>verdict</span></div>
+    <div class="stat"><b class="${r.errors ? 'bad' : ''}">${r.errors}</b><span>errors</span></div><div class="stat"><b class="${r.warnings ? 'warn' : ''}">${r.warnings}</b><span>warnings</span></div></div>
+    ${r.issues.length ? `<table style="margin-top:12px"><tr><th>level</th><th>check</th><th>finding</th></tr>${r.issues.map((i) => `<tr><td class="${LEVEL[i.level] || ''}">${i.level}</td><td><code>${esc(i.code)}</code></td><td>${esc(i.message)}</td></tr>`).join('')}</table>` : '<p class="ok">No findings: wiring, limits and firmware agree.</p>'}
+    ${r.operating_point ? `<h3>Operating point at ${r.operating_point.temperature} °C</h3><p class="muted" style="margin:0 0 6px">Nets driven only by MCU outputs read 0 V: outputs are not part of the DC model.</p><table><tr><th>net</th><th>volts</th></tr>${Object.entries(r.operating_point.volts).map(([n, v]) => `<tr><td>${esc(n)}</td><td>${fmt(v, 4)} V</td></tr>`).join('')}</table>` : ''}
+    <h3>Assumptions</h3><ul class="notes">${r.assumptions.map((a) => `<li>${esc(a)}</li>`).join('')}</ul><p class="muted">Record <code>${esc(r.record_id)}</code></p>`;
+  $('#pane-power').innerHTML = r.power ? `<table><tr><th>supply</th><th>rail</th><th>load</th><th>limit</th><th>detail</th></tr>${r.power.map((p) => `<tr><td>${esc(p.regulator || p.source)}</td><td>${esc(p.rail)}</td><td class="${p.max_ma && p.load_ma > p.max_ma ? 'bad' : ''}">${fmt(p.load_ma)} mA</td><td>${p.max_ma ? fmt(p.max_ma) + ' mA' : '—'}</td><td>${p.regulator ? `in ${fmt(p.vin)} V, dropout ${fmt(p.dropout)} V, dissipates ${fmt(p.dissipation_w)} W; ` + (p.loads || []).map(([n, i]) => `${esc(n)} ${fmt(i)} mA`).join(', ') : ''}</td></tr>`).join('')}</table>
+    ${r.leds?.length ? `<h3>LEDs</h3><table><tr><th>LED</th><th>resistor</th><th>driven by</th><th>current</th></tr>${r.leds.map((l) => `<tr><td>${esc(l.led)}</td><td>${esc(l.resistor)}</td><td>${esc(l.drive)}</td><td>${fmt(l.current_ma)} mA</td></tr>`).join('')}</table>` : ''}` : '<p class="muted">No power data (fix the connectivity errors first).</p>';
+  $('#pane-firmware').innerHTML = r.firmware ? `<h3>Pins used by the firmware</h3><table><tr><th>line</th><th>call</th><th>pin</th><th>symbol</th></tr>${r.firmware.uses.map((u) => `<tr><td>${u.line}</td><td><code>${esc(u.call)}</code></td><td>${esc(u.pin)}</td><td>${esc(u.symbol || '')}</td></tr>`).join('')}</table><p class="muted">Wi-Fi in use: ${r.firmware.wifi ? 'yes' : 'no'} · ADC resolution set in code: ${r.firmware.adc_resolution ?? 'default'}</p>` : '<p class="muted">The design has no firmware source.</p>';
+  tab('checks');
+}));
+
+function chart(rows, acc, unit) {
+  const cv = document.createElement('canvas'); cv.height = 300;
+  setTimeout(() => {
+    const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = 300; cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext('2d'); g.scale(dpr, dpr);
+    const pad = { l: 46, r: 12, t: 12, b: 28 };
+    const xs = rows.map((r) => r.value), x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const series = [['error_worst_case', getComputedStyle(document.documentElement).getPropertyValue('--hoard-danger')], ['error_p997', getComputedStyle(document.documentElement).getPropertyValue('--hoard-accent')], ['resolution', getComputedStyle(document.documentElement).getPropertyValue('--hoard-text-dim')]];
+    const ymax = Math.max(acc || 0, ...rows.map((r) => Math.max(r.error_worst_case ?? 0, r.error_p997, r.resolution))) * 1.1;
+    const X = (v) => pad.l + (v - x0) / (x1 - x0) * (W - pad.l - pad.r), Y = (v) => H - pad.b - v / ymax * (H - pad.t - pad.b);
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.fillStyle = getComputedStyle(document.body).color; g.font = '11px ' + getComputedStyle(document.body).fontFamily;
+    for (let i = 0; i <= 4; i++) { const v = ymax * i / 4; g.beginPath(); g.moveTo(pad.l, Y(v)); g.lineTo(W - pad.r, Y(v)); g.stroke(); g.fillText(v.toFixed(2), 4, Y(v) + 4); }
+    for (let i = 0; i <= 5; i++) { const v = x0 + (x1 - x0) * i / 5; g.fillText(v.toFixed(0) + ' ' + unit, X(v) - 12, H - 8); }
+    if (acc) { g.setLineDash([5, 4]); g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--hoard-success'); g.beginPath(); g.moveTo(pad.l, Y(acc)); g.lineTo(W - pad.r, Y(acc)); g.stroke(); g.setLineDash([]); }
+    for (const [k, col] of series) { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); rows.forEach((r, i) => { const v = r[k] ?? 0; i ? g.lineTo(X(r.value), Y(v)) : g.moveTo(X(r.value), Y(v)); }); g.stroke(); }
+  });
+  return cv;
+}
+
+$('#btn-sensor').addEventListener('click', () => run('Sensor study', async () => {
+  const r = await api('/api/sensor', { design: design() });
+  lastSensor = r;
+  const a = r.accuracy, u = r.unit ? ' ' + r.unit : '';
+  const worst = Math.max(...r.rows.map((x) => x.error_worst_case ?? x.error_max_mc));
+  $('#pane-sensor').innerHTML = `<div class="stats">
+      <div class="stat"><b>${r.adc_bits}-bit · ${fmt(r.adc_ref)} V</b><span>ADC on net ${esc(r.net)}</span></div>
+      <div class="stat"><b class="${r.monotonic ? 'ok' : 'bad'}">${r.monotonic ? 'monotonic' : 'not monotonic'}</b><span>transfer</span></div>
+      <div class="stat"><b>${fmt(worst)}${u}</b><span>worst-case error in range</span></div>
+      ${a ? `<div class="stat"><b class="${a.met_everywhere ? 'ok' : a.met_from !== null ? 'warn' : 'bad'}">${a.met_from !== null ? fmt(a.met_from) + '…' + fmt(a.met_to) + u : 'nowhere'}</b><span>meets ±${fmt(a.target)}${u}</span></div>` : ''}
+      <div class="stat"><b>${r.firmware_table.points} pts · ${fmt(r.firmware_table.round_trip_max_error)}${u}</b><span>firmware table, round-trip error</span></div></div>
+    <h3>Error across the range</h3><div id="chart"></div>
+    <div class="legend"><span><i style="background:var(--hoard-danger)"></i>worst case</span><span><i style="background:var(--hoard-accent)"></i>99.7 % of ${r.samples} boards</span><span><i style="background:var(--hoard-text-dim)"></i>resolution per LSB</span>${a ? '<span><i style="background:var(--hoard-success)"></i>accuracy target</span>' : ''}</div>
+    ${r.saturated_at.length ? `<p class="bad">ADC saturates at ${r.saturated_at.map(fmt).join(', ')}${u}</p>` : ''}
+    <h3>Physical test: acceptance bands</h3>
+    <table><tr><th>${esc(r.variable)}</th><th>how</th><th>expected code</th><th>accept</th><th>readings (codes, comma-separated)</th></tr>
+    ${r.test_plan.points.map((p, i) => `<tr><td>${fmt(p.value)}${u}</td><td>${esc(p.how)}</td><td>${p.expected_code}</td><td>${p.accept_min}–${p.accept_max}</td><td><input data-reading="${i}" placeholder="e.g. 3150, 3152"></td></tr>`).join('')}</table>
+    <div class="row"><button class="hoard-btn" id="btn-measure">Evaluate readings</button></div><div id="measure-result"></div>
+    <p class="muted">${esc(r.test_plan.note)} Record <code>${esc(r.record_id)}</code></p>`;
+  $('#chart').appendChild(chart(r.rows, a?.target, r.unit || ''));
+  $('#btn-measure').addEventListener('click', () => run('Evaluation', async () => {
+    const readings = r.test_plan.points.map((p, i) => ({ value: p.value, codes: $(`[data-reading="${i}"]`).value.split(/[,\s]+/).filter(Boolean).map(Number) })).filter((x) => x.codes.length);
+    const m = await api('/api/measurements', { design: design(), readings });
+    $('#measure-result').innerHTML = `<table><tr><th>point</th><th>mean code</th><th>spread</th><th>band</th><th></th></tr>${m.results.map((x) => `<tr><td>${fmt(x.value)}${u}</td><td>${fmt(x.mean_code, 5)}</td><td>${x.spread ?? ''}</td><td>${x.band ? x.band.join('–') : ''}</td><td class="${x.verdict === 'pass' ? 'ok' : 'bad'}">${esc(x.verdict)}</td></tr>`).join('')}</table>
+      <p>Overall: <b class="${m.verdict === 'pass' ? 'ok' : 'bad'}">${m.verdict}</b>${m.monotonic ? '' : ' · readings are not monotonic with the reference'}</p>`;
+  }));
+  tab('sensor');
+}));
+
+$('#btn-header').addEventListener('click', () => run('Firmware table', async () => {
+  const text = await api('/api/firmware/header', { design: design() }, true);
+  const pane = $('#pane-firmware');
+  pane.insertAdjacentHTML('beforeend', `<h3>Lookup table generated from the circuit</h3><div class="row" style="margin:0 0 8px"><button class="hoard-btn" id="dl-header">Download sensor_table.h</button></div><pre></pre>`);
+  pane.querySelector('pre:last-of-type').textContent = text;
+  pane.querySelector('#dl-header').addEventListener('click', () => download('sensor_table.h', text));
+  tab('firmware');
+}));
+
+$('#btn-enclosure').addEventListener('click', () => run('Enclosure', async () => {
+  const r = await api('/api/enclosure', { design: design() });
+  const box = JSON.stringify(r.enclosure, null, 2), lid = JSON.stringify(r.lid, null, 2);
+  $('#pane-enclosure').innerHTML = `<div class="stats"><div class="stat"><b>${r.outer_mm.map((v) => fmt(v)).join(' × ')} mm</b><span>outside</span></div><div class="stat"><b>${r.inner_mm.map((v) => fmt(v)).join(' × ')} mm</b><span>inside</span></div></div>
+    <p class="muted">${esc(r.note)}</p><div class="row"><button class="hoard-btn" id="dl-box">Download enclosure spec</button><button class="hoard-btn" id="dl-lid">Download lid spec</button></div><pre></pre>`;
+  $('#pane-enclosure pre').textContent = box;
+  $('#dl-box').addEventListener('click', () => download('enclosure.cad.json', box, 'application/json'));
+  $('#dl-lid').addEventListener('click', () => download('lid.cad.json', lid, 'application/json'));
+  tab('enclosure');
+}));
+
+$('#btn-import').addEventListener('click', () => run('Import', async () => {
+  const f = $('#net-file').files[0];
+  if (!f) throw new Error('choose a .net file');
+  const supplies = $('#sup-net').value.trim() ? [{ net: $('#sup-net').value.trim(), voltage: parseFloat($('#sup-v').value), max_ma: parseFloat($('#sup-ma').value) || null }] : null;
+  const r = await api('/api/import/kicad', { netlist: await f.text(), name: f.name.replace(/\.net$/i, ''), supplies });
+  $('#design').value = JSON.stringify(r.design, null, 2);
+  $('#import-report').innerHTML = `${r.design.components.length} components, ${Object.keys(r.design.nets).length} nets.` + (r.questions.length ? `<ul class="notes">${r.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul>` : ' Nothing missing.');
+}));
+
+async function loadRecords() {
+  const recs = await api('/api/records?limit=60');
+  $('#pane-records').innerHTML = recs.length ? `<table><tr><th>when</th><th>kind</th><th>design</th><th>id</th></tr>${recs.map((r) => `<tr><td>${esc(r.created)}</td><td>${esc(r.kind)}</td><td>${esc(r.name)}</td><td><a style="color:var(--hoard-accent)" target="_blank" href="/api/records/${encodeURIComponent(r.id)}"><code>${esc(r.id)}</code></a></td></tr>`).join('')}</table>` : '<p class="muted">No saved checks yet.</p>';
+}
+loadExamples().catch((e) => setStatus(e.message, 'bad'));
+</script>
+</body>
+</html>
