@@ -2,19 +2,20 @@
 from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
+from mcp_types import ToolAnnotations
 
 from . import service
 
 mcp = MCPServer("Shannon's Hoard")
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def shannon_examples(example_id: str | None = None) -> dict | list:
     """List the worked designs (a machine temperature node and three broken variants) or return one."""
     return service.example(example_id) if example_id else service.example_list()
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def shannon_parts() -> dict:
     """Boards with every pin's capabilities (ADC, input-only, strapping), voltage limits and ADC data; regulators."""
     return service.parts()
@@ -37,7 +38,7 @@ def shannon_sensor_study(design: dict, samples: int = 2000) -> dict:
     return service.sensor(design, samples)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def shannon_firmware_header(design: dict) -> dict:
     """C header with the ADC-code-to-value table that matches the circuit, and its round-trip error."""
     return service.firmware_header(design)
@@ -50,7 +51,7 @@ def shannon_evaluate_measurements(design: dict, readings: list[dict], noise_lsb:
     return service.measurements(design, readings, noise_lsb)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def shannon_enclosure(design: dict, wall: float = 2.0, clearance: float = 1.5, cable_hole: float = 6.0) -> dict:
     """Enclosure and lid as CAD specs (mm) for Vulcan's Hoard, sized from design.board (width_mm, depth_mm, height_mm)."""
     return service.enclosure(design, wall, clearance, cable_hole)
