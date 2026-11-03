@@ -7,7 +7,7 @@ name = "shannon-hoard"
 version = "0.1.0"
 description = "Local electronics workbench: wiring, limits and firmware checked together, sensor accuracy with tolerances"
 requires-python = ">=3.11"
-dependencies = ["numpy>=2.0", "fastapi==0.162.0", "uvicorn==0.54.0", "mcp==2.3.0"]
+dependencies = ["numpy>=2.0", "fastapi==0.162.0", "uvicorn==0.54.0", "mcp==2.3.0", "httpx==0.28.1"]
 
 [project.optional-dependencies]
 test = ["pytest", "httpx"]
@@ -17,6 +17,7 @@ include = ["shannon*"]
 
 [tool.setuptools.package-data]
 shannon = ["static/*"]
+"shannon.hoard_link" = ["LICENSE", "VENDORED.txt", "_data/*", "ui/*", "ui/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -102,7 +102,7 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (v, d = 3) => (v === null || v === undefined) ? '—' : typeof v === 'number' ? (+v.toPrecision(d)).toString() : esc(v);
-let lastSensor = null;
+let lastSensor = null, lastOperation = null;
 
 function setStatus(t, cls = '') { $('#status').className = cls; $('#status').textContent = t; }
 function busy(on) { document.querySelectorAll('button.hoard-btn').forEach((b) => (b.disabled = on)); }
@@ -111,6 +111,12 @@ async function api(path, body, raw = false) {
   const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (raw && r.ok) return r.text();
   const j = await r.json().catch(() => ({}));
+  if (body !== undefined) {
+    const result = j.detail || j;
+    lastOperation = { path, input: structuredClone(body), status: result.status, record_id: result.record_id,
+      verdict: result.verdict, issues: result.issues, power: result.power,
+      error: result.error, questions: result.questions };
+  }
   if (!r.ok) { const d = j.detail || j; const e = new Error(d.error || JSON.stringify(d)); e.questions = d.questions || []; throw e; }
   return j;
 }
@@ -238,6 +244,13 @@ async function loadRecords() {
   const recs = await api('/api/records?limit=60');
   $('#pane-records').innerHTML = recs.length ? `<table><tr><th>when</th><th>kind</th><th>design</th><th>id</th></tr>${recs.map((r) => `<tr><td>${esc(r.created)}</td><td>${esc(r.kind)}</td><td>${esc(r.name)}</td><td><a style="color:var(--hoard-accent)" target="_blank" href="/api/records/${encodeURIComponent(r.id)}"><code>${esc(r.id)}</code></a></td></tr>`).join('')}</table>` : '<p class="muted">No saved checks yet.</p>';
 }
+window.hoardCopilot = {
+  context: async () => ({
+    editor: { kind: 'electronic_design', draft: $('#design').value },
+    selected_example: $('#example').value,
+    last_operation: lastOperation && structuredClone(lastOperation),
+  }),
+};
 loadExamples().catch((e) => setStatus(e.message, 'bad'));
 </script>
 </body>
