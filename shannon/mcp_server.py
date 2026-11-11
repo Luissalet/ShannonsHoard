@@ -83,5 +83,12 @@ def shannon_records(record_id: str | None = None, limit: int = 50) -> dict | lis
     return service.records(limit)
 
 
+try:  # the skills this app carries, for the agent that connects
+    from shannon.hoard_link import skills as _family_skills
+    _family_skills.attach(mcp, 'shannon', root=__file__)
+except Exception:  # noqa: BLE001 - the bridge works without them
+    pass
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")
