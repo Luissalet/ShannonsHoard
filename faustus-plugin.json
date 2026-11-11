@@ -49,5 +49,6 @@
   "x-family": {
     "copilot": {"contract_version": "1.0", "info": "/api/copilot/info", "panel": "/api/copilot/panel.js", "proxy": "/api/copilot/proxy", "launcher": "/api/copilot/launcher.js"},
     "agent_contract": false
-  }
+  },
+  "skills": {"slugs": ["electronics-wiring-check", "spec-driven-development", "verification-loop"], "limit": 3}
 }

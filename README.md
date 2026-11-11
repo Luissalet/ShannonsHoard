@@ -69,3 +69,7 @@ DC only: no transients, filtering, noise, self-heating of the thermistor or ADC 
 Both generated-header cases compile and execute with the installed MSVC compiler (`/TC /std:c11 /W4 /WX`), including a name beginning with a digit. Calibration points and both rail codes pass. This supplements the two GCC-specific pytest skips and does not certify a physical board.
 
 Native registration: connector `c157889e-09ea-46cd-b296-6182e2a5effd`, MCP server `0605ea67`. Main source and installed dependencies checked; client verification invokes the pure helpers without creating app data. The HTTP application retains its manual stop; isolated QA uses another port. The implementation was integrated by Claude without an approved cross-review; the historical review votes remain unchanged.
+
+## Skills for the agents that connect
+
+This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `electronics-wiring-check`, `spec-driven-development`, `verification-loop`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.

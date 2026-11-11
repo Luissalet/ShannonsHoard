@@ -23,3 +23,7 @@ Arranque y API: ver README.md. Puerto 5245.
 ## Límites
 
 Solo continua: sin transitorios, filtrado, ruido ni autocalentamiento del termistor; ADC del ESP32 ideal y lineal; tres placas y tres reguladores; lectura del firmware por patrones. Una simulación no demuestra el comportamiento de una placa real ni certifica nada; las bandas de prueba sirven para que las primeras lecturas reales digan si el modelo se sostiene.
+
+## Skills para los agentes que se conectan
+
+Esta app lleva procedimientos de la biblioteca de skills del espacio de trabajo de la familia para los agentes que se conectan: `electronics-wiring-check`, `spec-driven-development`, `verification-loop`. Aparecen en lo que el agente lee al conectarse, se leen con `skills_list` y `skill_read`, se buscan y asignan con `skills_library` y `skills_assign`, y se ofrecen como prompts. Se eligen en la página de skills (`/api/agent/skills/page`) o en la pestaña Skills del hub; el bloque `skills` de `faustus-plugin.json` guarda lo que la app pide por defecto.

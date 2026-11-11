@@ -346,6 +346,26 @@ html[data-hoard-app="dorian"] {
   --hoard-accent-line: rgba(223, 91, 116, 0.38);
 }
 
+html[data-hoard-app="drucker"] {
+  --hoard-deep: #1c141b;
+  --hoard-sunken: #161015;
+  --hoard-surface: #241b23;
+  --hoard-elevated: #2f252d;
+  --hoard-hover: #382b36;
+  --hoard-border: #433540;
+  --hoard-border-hover: #6a5867;
+  --hoard-text: #ece1ea;
+  --hoard-text-muted: #beb4bc;
+  --hoard-text-dim: #a69ba4;
+  --hoard-accent: #b48ead;
+  --hoard-accent-strong: #c4a7bf;
+  --hoard-accent-dim: #976e8f;
+  --hoard-accent-ink: #1b1319;
+  --hoard-accent-rgb: 180, 142, 173;
+  --hoard-accent-soft: rgba(180, 142, 173, 0.14);
+  --hoard-accent-line: rgba(180, 142, 173, 0.38);
+}
+
 html[data-hoard-app="echo"] {
   --hoard-deep: #17141d;
   --hoard-sunken: #120f17;
@@ -786,6 +806,26 @@ html[data-hoard-app="prospero"] {
   --hoard-accent-line: rgba(230, 93, 182, 0.38);
 }
 
+html[data-hoard-app="phidias"] {
+  --hoard-deep: #1a1916;
+  --hoard-sunken: #151412;
+  --hoard-surface: #22211e;
+  --hoard-elevated: #2d2b27;
+  --hoard-hover: #35332f;
+  --hoard-border: #3f3d39;
+  --hoard-border-hover: #66625c;
+  --hoard-text: #ece9e1;
+  --hoard-text-muted: #bebbb4;
+  --hoard-text-dim: #a6a39b;
+  --hoard-accent: #e8dcc0;
+  --hoard-accent-strong: #ebe0c7;
+  --hoard-accent-dim: #d1c09a;
+  --hoard-accent-ink: #191815;
+  --hoard-accent-rgb: 232, 220, 192;
+  --hoard-accent-soft: rgba(232, 220, 192, 0.14);
+  --hoard-accent-line: rgba(232, 220, 192, 0.38);
+}
+
 html[data-hoard-app="pygmalion"] {
   --hoard-deep: #1c1417;
   --hoard-sunken: #161012;
@@ -824,6 +864,26 @@ html[data-hoard-app="scheherazade"] {
   --hoard-accent-rgb: 108, 130, 236;
   --hoard-accent-soft: rgba(108, 130, 236, 0.14);
   --hoard-accent-line: rgba(108, 130, 236, 0.38);
+}
+
+html[data-hoard-app="seurat"] {
+  --hoard-deep: #1c1614;
+  --hoard-sunken: #161210;
+  --hoard-surface: #241e1b;
+  --hoard-elevated: #2f2825;
+  --hoard-hover: #382f2b;
+  --hoard-border: #433935;
+  --hoard-border-hover: #6a5d58;
+  --hoard-text: #ece4e1;
+  --hoard-text-muted: #beb7b4;
+  --hoard-text-dim: #a69e9b;
+  --hoard-accent: #ff9e7a;
+  --hoard-accent-strong: #ffbca3;
+  --hoard-accent-dim: #ec7a50;
+  --hoard-accent-ink: #1b1513;
+  --hoard-accent-rgb: 255, 158, 122;
+  --hoard-accent-soft: rgba(255, 158, 122, 0.14);
+  --hoard-accent-line: rgba(255, 158, 122, 0.38);
 }
 
 html[data-hoard-app="shannon"] {
