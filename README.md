@@ -1,20 +1,12 @@
 # Shannon's Hoard
 
-MCP declares examples, parts, in-memory firmware headers and enclosure specs as pure reads, available to Faustus in Plan mode. These helpers create no check records or files. Checks, sensor studies and measurement evaluation keep their existing record persistence and are not labelled as reads. The combined suite passes40tests with2GCC/cc-specific skips, including the real MCP wire contract.
+Local small-electronics checker: a circuit, the microcontroller that reads it, its firmware and its enclosure, checked together. [Español](README.es.md)
 
-Family integration1988 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current circuit draft, including incomplete JSON, and the last operation with its exact input and result summary. An edited draft stays distinct from the previous operation. The conversation, model and tools remain in Faustus; Shannon adds no conversation loop. MCP discovery starts no HTTP application.
+![Shannon's Hoard](app-icon.png)
 
-Status: integrated in main and listed in the Hub (explicit start). History: ecosystem1936, correction1983, family integration1988, icon1996, MCP helpers2000 in the shannon Ágora space. Native Faustus project74d2bc0f38db is linked to that space.
+## What it is
 
-## Integrated corrections (1983)
-
-A microcontroller board without its ground connection is a wiring error and produces no invented operating point. Pin and supply voltage checks use the board's own ground reference. Loads propagate from downstream converters to their sources in dependency order, including on-board regulators; changing component order does not change the power budget. Converter cycles are reported explicitly.
-
-Different measurements or checks saved in the same second receive unique record IDs and are published atomically. Existing record IDs remain readable.
-
-Validation:38 tests pass and2 are skipped by the GCC/cc-specific checks. Eight review regressions include a real MCP stdio round trip and immutable same-second measurement records. Brave on an isolated instance reports the missing MCU ground, a584mA load against a100mA upstream regulator, and589mA at the supply. These are invented circuits, not physical board measurements. No models, GPUs or hardware were used.
-
-Small electronics on your own PC: a circuit, the microcontroller that reads it, its firmware and its box, checked together. Shannon catches the wiring, limit and firmware mistakes that cost a board respin, says how accurate a sensor chain really is once every tolerance is counted, writes the firmware conversion table that matches the circuit, gives acceptance bands for the first physical test, and sizes an enclosure for Vulcan's Hoard.
+Shannon catches the wiring, limit and firmware mistakes that cost a board respin, says how accurate a sensor chain really is once every tolerance is counted, writes the firmware conversion table that matches the circuit, gives acceptance bands for the first physical test, and sizes an enclosure for Vulcan's Hoard.
 
 It is not a schematic editor and does not launch KiCad: it reads KiCad's netlist export, or a design written as JSON.
 
@@ -32,9 +24,11 @@ It is not a schematic editor and does not launch KiCad: it reads KiCad's netlist
 - **KiCad netlist import** (.net, KiCad 6-8): components by library symbol, values and tolerances from the value field, thermistor beta from `10k B3950`, ESP32/Uno/Pico pins from pin functions (`IO34` → `GPIO34`), regulators by part; the external supply is given explicitly because a netlist only shows a connector.
 - **Records**: every check and study with the exact design it used.
 
-Worked example: a machine temperature node (ESP32, 10k NTC divider on GPIO34, AMS1117 from USB 5 V, status LED) that checks clean, meets ±2.5 °C from 10 to 84 °C with 1 % parts and misses it at the ends; three broken variants (firmware reading the wrong pin, divider fed from 5 V, LED on an input-only pin) that the checks catch.
+Worked example included: a machine temperature node (ESP32, 10k NTC divider on GPIO34, AMS1117 from USB 5 V, status LED) that checks clean, meets ±2.5 °C from 10 to 84 °C with 1 % parts and misses it at the ends; three broken variants (firmware reading the wrong pin, divider fed from 5 V, LED on an input-only pin) that the checks catch.
 
 ## Run
+
+Requires Python 3.11 or later.
 
 ```
 python -m venv .venv
@@ -58,18 +52,39 @@ python -m venv .venv
 | POST | `/api/import/kicad` | `{netlist, name, supplies: [{net, voltage, max_ma}]}` |
 | GET | `/api/records`, `/api/records/{id}` | saved checks and studies |
 
-## MCP (stdio, `python -m shannon.mcp_server`)
-
-`shannon_examples`, `shannon_parts`, `shannon_check`, `shannon_sensor_study`, `shannon_firmware_header`, `shannon_evaluate_measurements`, `shannon_enclosure`, `shannon_import_kicad`, `shannon_records`.
-
 ## Limits
 
 DC only: no transients, filtering, noise, self-heating of the thermistor or ADC sampling effects; LEDs and MCU outputs are handled by the power budget, not by the nodal solver. The ESP32 ADC is modelled as ideal and linear; the real one needs calibration. Only three boards and three regulators are described. Firmware reading is pattern-based for Arduino-style code, not a compiler. A simulation does not prove how a real board behaves, and nothing here certifies compliance; the test bands exist so the first real readings can say whether the model holds.
 
-Both generated-header cases compile and execute with the installed MSVC compiler (`/TC /std:c11 /W4 /WX`), including a name beginning with a digit. Calibration points and both rail codes pass. This supplements the two GCC-specific pytest skips and does not certify a physical board.
+## Connection with Faustus and Hoard Hub
 
-Native registration: connector `c157889e-09ea-46cd-b296-6182e2a5effd`, MCP server `0605ea67`. Main source and installed dependencies checked; client verification invokes the pure helpers without creating app data. The HTTP application retains its manual stop; isolated QA uses another port. The implementation was integrated by Claude without an approved cross-review; the historical review votes remain unchanged.
+`faustus-plugin.json` registers the app as a Faustus plugin. The Hub starts the web application explicitly, on a port that adapts if the default is taken. Faustus gets a panel that receives the current circuit draft (including incomplete JSON) and the last operation with its exact input and result summary; the conversation, model and tools stay in Faustus.
 
-## Skills for the agents that connect
+MCP (stdio, `python -m shannon.mcp_server`) starts no HTTP application.
 
-This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `electronics-wiring-check`, `spec-driven-development`, `verification-loop`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
+| Group | Tools |
+| --- | --- |
+| Pure reads (read-only hint, usable in Faustus Plan mode; they create no records or files) | `shannon_examples`, `shannon_parts` |
+| Checks and studies | `shannon_check`, `shannon_sensor_study`, `shannon_evaluate_measurements` |
+| Firmware, enclosure and import | `shannon_firmware_header`, `shannon_enclosure`, `shannon_import_kicad` |
+| Records | `shannon_records` |
+
+The app also carries procedures from the family's skill library for connecting agents (`electronics-wiring-check`, `spec-driven-development`, `verification-loop`). They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. They are chosen on the skills page (`/api/agent/skills/page`) or in the Hub's Skills tab.
+
+## Project layout
+
+| Path | Contents |
+| --- | --- |
+| `shannon/circuit.py`, `analysis.py` | Netlist model and DC nodal analysis |
+| `shannon/design.py`, `parts.py` | Design object and board/regulator library |
+| `shannon/firmware.py` | Firmware pin analysis and header generation |
+| `shannon/kicad.py` | KiCad netlist import |
+| `shannon/service.py`, `app.py`, `static/` | Service, HTTP API and web page |
+| `shannon/mcp_server.py` | MCP server |
+| `shannon/hoard_link/` | Shared Hoard family code |
+| `tests/` | Test suite (two checks need GCC and are skipped without it) |
+| `docs/` | Research notes (Spanish) |
+
+## Credits
+
+Python with NumPy; the generated header is plain C99.
