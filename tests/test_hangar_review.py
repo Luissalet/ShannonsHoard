@@ -3,6 +3,8 @@ import copy
 
 import pytest
 
+from shannon.mcp_server import mcp
+
 from shannon import examples, service
 
 
@@ -105,7 +107,9 @@ async def test_ground_and_cascade_checks_through_real_mcp(tmp_path):
     async with stdio_client(params) as (read,write):
         async with ClientSession(read,write) as session:
             await session.initialize()
-            assert len((await session.list_tools()).tools) == 9
+            expected = await mcp.list_tools()
+            actual = (await session.list_tools()).tools
+            assert sorted(actual, key=lambda t: t.name) == sorted(expected, key=lambda t: t.name)
             assert not root.exists()
             design = examples.get()
             design["nets"]["GND"].remove("U1.GND")
