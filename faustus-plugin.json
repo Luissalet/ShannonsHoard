@@ -47,6 +47,15 @@
   },
   "notes": "Integrated in main. Explicit startup only; MCP discovery starts no HTTP app. The canonical family copilot relays the conversation to Faustus; no separate model or loop.",
   "x-family": {
+    "isolated_instance": {
+      "data_env": "SHANNON_DATA",
+      "argv": [
+        "-m",
+        "shannon",
+        "--port",
+        "{PORT}"
+      ]
+    },
     "copilot": {"contract_version": "1.0", "info": "/api/copilot/info", "panel": "/api/copilot/panel.js", "proxy": "/api/copilot/proxy", "launcher": "/api/copilot/launcher.js"},
     "agent_contract": false
   },
